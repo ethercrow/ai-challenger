@@ -24,7 +24,6 @@ library
     , containers
     , process
     , semigroups
-    , threepenny-gui >= 0.6
     , text >= 1.2
     , network >= 2.6
     , network-simple >= 0.4
