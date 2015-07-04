@@ -25,8 +25,9 @@ startJudge :: Game game => game-> Turn  -> [FilePath] -> IO ()
 startJudge game turnLimit exes = do
     bots <- launchBots exes
     mapM_ (TIO.putStrLn . botName) bots
-    result <- simulateMatch game bots turnLimit
-    print result
+    GameResult winners _ _ <- simulateMatch game bots turnLimit
+    TIO.putStrLn ("Winners: " <> T.intercalate ", "
+        (map botName (filter ((`elem` winners) . botId) bots)))
     mapM_ botClose bots
 
 simulateMatch :: Game game => game -> [Bot] -> Turn -> IO (GameResult game)
@@ -51,7 +52,7 @@ simulateMatch game bots turnLimit =
 
 sendWorld :: Game game => game -> GameState game -> [Bot] -> IO ()
 sendWorld _ gameState =
-    mapM_ $ \(Bot { botId = (PlayerId me), botInput = ch }) -> do
+    mapM_ $ \(Bot { botId = PlayerId me, botInput = ch }) -> do
         sendLine ch "."
 
 getOrders :: Game game => game -> [Bot]

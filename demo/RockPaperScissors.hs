@@ -44,9 +44,9 @@ instance Game RPS where
             Right orders -> Right (oldState <> score orders)
     gameTimeout (WinCounts x y) =
         let winners = case compare x y of
-                EQ -> [PlayerId 0, PlayerId 1]
-                GT -> [PlayerId 0]
-                LT -> [PlayerId 1]
+                EQ -> [PlayerId 1, PlayerId 2]
+                GT -> [PlayerId 1]
+                LT -> [PlayerId 2]
         in GameResult winners TurnLimit Replay
 
 validateOrders :: M.Map PlayerId [GameOrder RPS]
