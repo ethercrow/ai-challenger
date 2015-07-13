@@ -15,14 +15,17 @@ library
   ghc-options: -Wall -ferror-spans
   build-depends:
       base >= 4.7
+    , aeson
     , containers
     , process
     , semigroups
     , text >= 1.2
     , network >= 2.6
     , network-simple >= 0.4
+    , path
     , servant >= 0.4.2
     , servant-server >= 0.4.2
+    , vector
     , wai
     , warp
   exposed-modules:
@@ -32,12 +35,22 @@ library
       AIChallenger.Bot
       AIChallenger.Channel
 
-executable ai-challenger
+executable ai-challenger-rps
   main-is:             Main.hs
   build-depends:
       base >= 4.7
     , containers
     , ai-challenger
-  hs-source-dirs:      demo
+  hs-source-dirs:      game-rps
   default-language:    Haskell2010
-  ghc-options: -Wall -ferror-spans
+  ghc-options: -Wall -ferror-spans -threaded
+
+executable ai-challenger-grid
+  main-is:             Main.hs
+  build-depends:
+      base >= 4.7
+    , containers
+    , ai-challenger
+  hs-source-dirs:      game-grid
+  default-language:    Haskell2010
+  ghc-options: -Wall -ferror-spans -threaded

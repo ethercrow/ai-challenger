@@ -1,14 +1,32 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module AIChallenger.Types where
 
+import qualified Data.Aeson as A
 import Data.List (intercalate)
 import qualified Data.Map.Strict as M
 import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid
+import qualified Data.Vector as V
 import qualified Data.Text as T
+import GHC.Generics
+import Path
+
+data ServerState = ServerState
+    { ssExecutables :: V.Vector (Path Abs File)
+    } deriving Generic
+
+instance A.ToJSON (Path a b) where
+    toJSON = A.String . T.pack . toFilePath
+
+instance A.ToJSON ServerState
+
+data ServerStateUpdate
+    = AddExecutable (Path Abs File)
+    | RemoveExecutable (Path Abs File)
 
 newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
