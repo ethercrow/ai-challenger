@@ -19,7 +19,7 @@ import AIChallenger.Bot
 import AIChallenger.Channel
 import AIChallenger.Types
 
-simulateMatch :: Game game => game -> Turn -> [Bot] -> IO (GameResult game)
+simulateMatch :: Game game => game -> Turn -> [Player] -> IO (GameResult game)
 simulateMatch game turnLimit bots =
     go mempty (gameInitialState game)
     where
@@ -29,7 +29,7 @@ simulateMatch game turnLimit bots =
         faultsOrOrders <- getOrders game bots
         case faultsOrOrders of
             Left faults -> do
-                let winners = fmap botId bots \\ M.keys faults
+                let winners = fmap playerId bots \\ M.keys faults
                 return (GameResult
                     winners
                     (Disqualification faults)
@@ -39,15 +39,15 @@ simulateMatch game turnLimit bots =
                     Left result -> return result
                     Right newState -> go (succ turn) newState
 
-sendWorld :: Game game => game -> GameState game -> [Bot] -> IO ()
+sendWorld :: Game game => game -> GameState game -> [Player] -> IO ()
 sendWorld _ gameState =
-    mapM_ $ \(Bot { botId = PlayerId me, botInput = ch }) -> do
+    mapM_ $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
         sendLine ch "."
 
-getOrders :: Game game => game -> [Bot]
+getOrders :: Game game => game -> [Player]
     -> IO (Either Faults (M.Map PlayerId [GameOrder game]))
 getOrders game bots = do
-    unparsedOrdersAndFaults <- forM bots $ \(Bot {botId = me, botOutput = ch}) ->
+    unparsedOrdersAndFaults <- forM bots $ \(Player {playerId = me, playerOutput = ch}) ->
         do
             faultOrTexts <- chReadLinesUntilDot ch
             case faultOrTexts of

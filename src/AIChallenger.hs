@@ -9,13 +9,14 @@ module AIChallenger
     ( startJudge
     ) where
 
-import Control.Concurrent
+import Control.Applicative
+import Control.Concurrent.MVar
+import Control.DeepSeq
 import Control.Exception
+import Control.Monad.Trans
 import Data.Monoid
-import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import GHC.Generics
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
@@ -24,22 +25,32 @@ import AIChallenger.Bot
 import AIChallenger.Types
 import AIChallenger.Match
 
-type WebAPI = "state" :> Get '[JSON] ServerState
+type WebAPI
+    = "state" :> Get '[JSON] ServerState
+    :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
 
 startJudge :: Game game => game -> IO ()
 startJudge _game = do
     stateVar <- newMVar (ServerState mempty)
-    Warp.run 8081 app
+    Warp.run 8081 (app stateVar)
 
-app :: Wai.Application
-app = serve (Proxy :: Proxy WebAPI) ohai
+app :: MVar ServerState -> Wai.Application
+app stateVar =
+    let handlers = getState stateVar :<|> postBot stateVar
+    in serve (Proxy :: Proxy WebAPI) handlers
 
-ohai :: Server WebAPI
-ohai = return (ServerState mempty)
+getState stateVar = liftIO (readMVar stateVar)
+
+postBot stateVar bot = do
+    liftIO (putStrLn ("Adding bot: " <> show bot))
+    liftIO (modifyMVarStrict_ stateVar (\s -> s {ssBots = pure bot <> ssBots s}))
+    return bot
+
+modifyMVarStrict_ var f = modifyMVar_ var $ \value -> return $!! f value
 
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> [FilePath] -> IO ()
 launchBotsAndSimulateMatch game turnLimit exes = do
-    bracket (launchBots exes) (mapM_ botClose) $ \bots -> do
+    bracket (launchBots exes) (mapM_ playerClose) $ \bots -> do
         GameResult winners _ _ <- simulateMatch game turnLimit bots
         TIO.putStrLn ("Winners: " <> T.intercalate ", "
-            (map botName (filter ((`elem` winners) . botId) bots)))
+            (map playerName (filter ((`elem` winners) . playerId) bots)))

@@ -17,14 +17,17 @@ library
       base >= 4.7
     , aeson
     , containers
-    , process
-    , semigroups
-    , text >= 1.2
+    , deepseq
+    , deepseq-generics
+    , mtl
     , network >= 2.6
     , network-simple >= 0.4
     , path
+    , process
+    , semigroups
     , servant >= 0.4.2
     , servant-server >= 0.4.2
+    , text >= 1.2
     , vector
     , wai
     , warp

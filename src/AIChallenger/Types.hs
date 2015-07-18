@@ -1,10 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module AIChallenger.Types where
 
+import Control.DeepSeq.Generics
 import qualified Data.Aeson as A
 import Data.List (intercalate)
 import qualified Data.Map.Strict as M
@@ -14,13 +16,38 @@ import qualified Data.Vector as V
 import qualified Data.Text as T
 import GHC.Generics
 import Path
+import Path.Internal
+
+data Bot = Bot
+    { botName :: !T.Text
+    , botExecutable :: !(Path Abs File)
+    } deriving (Show, Generic)
 
 data ServerState = ServerState
-    { ssExecutables :: V.Vector (Path Abs File)
+    { ssBots :: V.Vector Bot
     } deriving Generic
+
+instance NFData (Path a b) where
+    rnf (Path x) = rnf x
+
+instance NFData Bot where
+    rnf = genericRnf
+
+instance NFData ServerState where
+    rnf = genericRnf
+
+instance A.FromJSON (Path Abs File) where
+    parseJSON (A.String t) =
+        case parseAbsFile (T.unpack t) of
+            Right p -> return p
+            Left err -> fail (show err)
 
 instance A.ToJSON (Path a b) where
     toJSON = A.String . T.pack . toFilePath
+
+instance A.FromJSON Bot
+
+instance A.ToJSON Bot
 
 instance A.ToJSON ServerState
 

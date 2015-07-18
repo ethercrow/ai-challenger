@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module AIChallenger.Bot
-    ( Bot (..)
+    ( Player (..)
     , launchBots
     ) where
 
@@ -21,20 +21,20 @@ import System.Process
 import AIChallenger.Types
 import AIChallenger.Channel
 
-data Bot = Bot
-    { botId :: !PlayerId
-    , botName :: !T.Text
-    , botInput :: !OutChannel
-    , botOutput :: !InChannel
-    , botClose :: IO ()
+data Player = Player
+    { playerId :: !PlayerId
+    , playerName :: !T.Text
+    , playerInput :: !OutChannel
+    , playerOutput :: !InChannel
+    , playerClose :: IO ()
     }
 
-launchBots :: [FilePath] -> IO [Bot]
+launchBots :: [FilePath] -> IO [Player]
 launchBots = mapM launch . zip [1..]
     where
     launch (index, "builtin-idle") =
         return
-            (Bot
+            (Player
                 (PlayerId index)
                 "builtin-idle"
                 whateverChannel
@@ -56,7 +56,7 @@ launchBots = mapM launch . zip [1..]
         putStrLn "waiting for handle to appear"
         h <- takeMVar handleVar
         return
-            (Bot
+            (Player
                 (PlayerId index)
                 ("port-" <> T.pack port)
                 (outChannelFromHandle h)
@@ -75,7 +75,7 @@ launchBots = mapM launch . zip [1..]
                 hSetBuffering hOut LineBuffering
                 hSetBuffering hIn LineBuffering
                 return
-                    (Bot
+                    (Player
                         (PlayerId index)
                         (T.pack path)
                         (outChannelFromHandle hIn)
