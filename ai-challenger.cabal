@@ -19,6 +19,7 @@ library
     , containers
     , deepseq
     , deepseq-generics
+    , ekg
     , mtl
     , network >= 2.6
     , network-simple >= 0.4
@@ -46,7 +47,7 @@ executable ai-challenger-rps
     , ai-challenger
   hs-source-dirs:      game-rps
   default-language:    Haskell2010
-  ghc-options: -Wall -ferror-spans -threaded
+  ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
 
 executable ai-challenger-grid
   main-is:             Main.hs
@@ -56,4 +57,4 @@ executable ai-challenger-grid
     , ai-challenger
   hs-source-dirs:      game-grid
   default-language:    Haskell2010
-  ghc-options: -Wall -ferror-spans -threaded
+  ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
