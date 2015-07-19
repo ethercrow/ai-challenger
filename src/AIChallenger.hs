@@ -10,7 +10,6 @@ module AIChallenger
     ) where
 
 import Control.Applicative
-import Control.Concurrent.MVar
 import Control.DeepSeq
 import Control.Exception
 import Control.Monad.Trans
@@ -23,8 +22,9 @@ import Servant
 import qualified System.Remote.Monitoring as EKG
 
 import AIChallenger.Bot
-import AIChallenger.Types
 import AIChallenger.Match
+import AIChallenger.StateVar
+import AIChallenger.Types
 
 type WebAPI
     = "state" :> Get '[JSON] ServerState
@@ -32,23 +32,19 @@ type WebAPI
 
 startJudge :: Game game => game -> IO ()
 startJudge _game = do
-    EKG.forkServer "localhost" 7999
-    stateVar <- newMVar (ServerState mempty)
+    _ <- EKG.forkServer "localhost" 7999
+    stateVar <- mkStateVar
     Warp.run 8081 (app stateVar)
 
-app :: MVar ServerState -> Wai.Application
+app :: StateVar -> Wai.Application
 app stateVar =
-    let handlers = getState stateVar :<|> postBot stateVar
+    let handlers = readStateVar stateVar :<|> postBot stateVar
     in serve (Proxy :: Proxy WebAPI) handlers
-
-getState stateVar = liftIO (readMVar stateVar)
 
 postBot stateVar bot = do
     liftIO (putStrLn ("Adding bot: " <> show bot))
-    liftIO (modifyMVarStrict_ stateVar (\s -> s {ssBots = pure bot <> ssBots s}))
+    modifyStateVar stateVar (AddBot bot)
     return bot
-
-modifyMVarStrict_ var f = modifyMVar_ var $ \value -> return $!! f value
 
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> [FilePath] -> IO ()
 launchBotsAndSimulateMatch game turnLimit exes = do

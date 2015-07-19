@@ -29,6 +29,7 @@ library
     , servant >= 0.4.2
     , servant-server >= 0.4.2
     , text >= 1.2
+    , transformers
     , vector
     , wai
     , warp
@@ -38,6 +39,8 @@ library
   other-modules:
       AIChallenger.Bot
       AIChallenger.Channel
+      AIChallenger.Match
+      AIChallenger.StateVar
 
 executable ai-challenger-rps
   main-is:             Main.hs

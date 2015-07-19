@@ -21,16 +21,26 @@ import Path.Internal
 data Bot = Bot
     { botName :: !T.Text
     , botExecutable :: !(Path Abs File)
+    } deriving (Show, Generic, Eq)
+
+data Match = Match
+    { matchBots :: V.Vector Bot
+    , matchWinners :: V.Vector Bot
+    -- , matchGameOverType :: GameOverType
     } deriving (Show, Generic)
 
 data ServerState = ServerState
     { ssBots :: V.Vector Bot
-    } deriving Generic
+    , ssMatches :: V.Vector Match
+    } deriving (Show, Generic)
 
 instance NFData (Path a b) where
     rnf (Path x) = rnf x
 
 instance NFData Bot where
+    rnf = genericRnf
+
+instance NFData Match where
     rnf = genericRnf
 
 instance NFData ServerState where
@@ -51,18 +61,20 @@ instance A.ToJSON Bot
 
 instance A.ToJSON ServerState
 
+instance A.ToJSON Match
+
 data ServerStateUpdate
-    = AddExecutable (Path Abs File)
-    | RemoveExecutable (Path Abs File)
+    = AddBot Bot
+    | RemoveBot Bot
 
 newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
 
 newtype Fault = Fault T.Text
-    deriving Show
+    deriving (Show, Generic)
 
 newtype PlayerId = PlayerId Int
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Generic)
 
 type Faults = M.Map PlayerId (NonEmpty Fault)
 
@@ -70,7 +82,18 @@ data GameOverType
     = Elimination
     | TurnLimit
     | Disqualification Faults
-    deriving Show
+    deriving (Show, Generic)
+
+-- instance A.ToJSON GameOverType
+
+instance NFData Fault where
+    rnf = genericRnf
+
+instance NFData GameOverType where
+    rnf = genericRnf
+
+instance NFData PlayerId where
+    rnf = genericRnf
 
 data GameResult game = GameResult
     { gameWinners :: [PlayerId]
