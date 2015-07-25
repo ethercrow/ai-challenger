@@ -9,8 +9,6 @@ module AIChallenger
     ( startJudge
     ) where
 
-import Control.Applicative
-import Control.DeepSeq
 import Control.Exception
 import Control.Monad.Trans
 import Data.Monoid
@@ -41,14 +39,8 @@ app stateVar =
     let handlers = readStateVar stateVar :<|> postBot stateVar
     in serve (Proxy :: Proxy WebAPI) handlers
 
+postBot :: MonadIO m => StateVar -> Bot -> m Bot
 postBot stateVar bot = do
     liftIO (putStrLn ("Adding bot: " <> show bot))
-    modifyStateVar stateVar (AddBot bot)
+    _ <- modifyStateVar stateVar (AddBot bot)
     return bot
-
-launchBotsAndSimulateMatch :: Game game => game -> Turn -> [FilePath] -> IO ()
-launchBotsAndSimulateMatch game turnLimit exes = do
-    bracket (launchBots exes) (mapM_ playerClose) $ \bots -> do
-        GameResult winners _ _ <- simulateMatch game turnLimit bots
-        TIO.putStrLn ("Winners: " <> T.intercalate ", "
-            (map playerName (filter ((`elem` winners) . playerId) bots)))

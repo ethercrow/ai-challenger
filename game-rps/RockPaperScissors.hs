@@ -1,13 +1,15 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module RockPaperScissors
     ( game
     ) where
 
-import qualified Data.Map.Strict as M
+import Data.Maybe
 import Data.Monoid
+import qualified Data.Vector as V
 
 import AIChallenger.Types
 
@@ -37,8 +39,8 @@ instance Game RPS where
         case validateOrders rawOrders of
             Left faults ->
                 let winners =
-                        filter
-                            (not . (`elem` M.keys faults))
+                        V.filter
+                            (not . (`V.elem` (fmap fst faults)))
                             (fmap PlayerId [0, 1])
                 in Left (GameResult winners (Disqualification faults) Replay)
             Right orders -> Right (oldState <> score orders)
@@ -49,19 +51,19 @@ instance Game RPS where
                 LT -> [PlayerId 2]
         in GameResult winners TurnLimit Replay
 
-validateOrders :: M.Map PlayerId [GameOrder RPS]
+validateOrders :: V.Vector (PlayerId, V.Vector (GameOrder RPS))
     -> Either Faults (GameOrder RPS, GameOrder RPS)
 validateOrders rawOrders =
-    if M.null faults
+    if V.null faults
     then
-        let [a, b] = foldMap (take 1) rawOrders
+        let [a, b] = foldMap (V.take 1 . snd) rawOrders
         in Right (a, b)
     else Left faults
     where
-    faults = M.mapMaybe go rawOrders
-    go [] = Just (pure (Fault "no moves"))
-    go [x] = Nothing
-    go _ = Just (pure (Fault "multiple moves"))
+    faults = V.fromList (mapMaybe go (V.toList rawOrders))
+    go (p, []) = Just (p, (pure (Fault "no moves")))
+    go (p, [x]) = Nothing
+    go (p, _) = Just (p, (pure (Fault "multiple moves")))
 
 score :: (GameOrder RPS, GameOrder RPS) -> GameState RPS
 score (R, P) = WinCounts 0 1

@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module AIChallenger.Bot
     ( Player (..)
@@ -9,14 +10,14 @@ module AIChallenger.Bot
 import Control.Concurrent
 import Control.Exception (SomeException, catch)
 import Control.Monad
-import Data.Char (isDigit)
-import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
 import System.Exit
 import System.IO
 import System.Process
+import qualified Path as P
 
 import AIChallenger.Types
 import AIChallenger.Channel
@@ -29,23 +30,23 @@ data Player = Player
     , playerClose :: IO ()
     }
 
-launchBots :: [FilePath] -> IO [Player]
-launchBots = mapM launch . zip [1..]
+launchBots :: V.Vector Bot -> IO (V.Vector Player)
+launchBots = mapM launch . V.zip [1..]
     where
-    launch (index, "builtin-idle") =
+    launch (index, Bot name IdleBot) =
         return
             (Player
                 (PlayerId index)
-                "builtin-idle"
+                name 
                 whateverChannel
                 (yesChannel ".")
                 (return ()))
-    launch (index, port) | all isDigit port = do
+    launch (index, Bot name (TCPBot port)) = do
         handleVar <- newEmptyMVar
         finishVar <- newEmptyMVar
-        _ <- TCP.listen TCP.HostAny port $ \(listeningSocket, listeningAddr) -> do
+        _ <- TCP.listen TCP.HostAny (show port) $ \(listeningSocket, listeningAddr) -> do
             putStrLn $ "Listening for incoming connections at " ++ show listeningAddr
-            TCP.acceptFork listeningSocket $ \(connectionSocket, remoteAddr) -> do
+            _ <- TCP.acceptFork listeningSocket $ \(connectionSocket, remoteAddr) -> do
                 putStrLn $ "Connection established from " ++ show remoteAddr
                 hFlush stdout
                 h <- Socket.socketToHandle connectionSocket ReadWriteMode
@@ -58,14 +59,14 @@ launchBots = mapM launch . zip [1..]
         return
             (Player
                 (PlayerId index)
-                ("port-" <> T.pack port)
+                name
                 (outChannelFromHandle h)
                 (inChannelFromHandle h)
                 (hClose h >> putMVar finishVar ()))
-    launch (index, path) = do
+    launch (index, Bot name (ExecutableBot path)) = do
         handles <-
             createProcess
-                (proc path [])
+                (proc (P.toFilePath path) [])
                     { std_out = CreatePipe
                     , std_in = CreatePipe
                     , create_group = True
@@ -77,12 +78,12 @@ launchBots = mapM launch . zip [1..]
                 return
                     (Player
                         (PlayerId index)
-                        (T.pack path)
+                        name
                         (outChannelFromHandle hIn)
                         (inChannelFromHandle hOut)
                         (catch
                             (terminateProcess procHandle)
                             (\(_ :: SomeException) -> return ())))
             _ -> do 
-                print ("failed to start " ++ path)
+                print ("failed to start " ++ P.toFilePath path)
                 exitWith (ExitFailure 10)

@@ -1,25 +1,35 @@
+{-# LANGUAGE MonadComprehensions #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module AIChallenger.Match
-    ( simulateMatch
+    ( launchBotsAndSimulateMatch
     ) where
 
 import Control.Exception
 import Control.Monad
-import Data.List ((\\))
-import Data.List.NonEmpty (nonEmpty)
-import qualified Data.Map.Strict as M
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import qualified Data.Vector as V
 
 import AIChallenger.Bot
 import AIChallenger.Channel
 import AIChallenger.Types
 
-simulateMatch :: Game game => game -> Turn -> [Player] -> IO (GameResult game)
+launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> IO ()
+launchBotsAndSimulateMatch game turnLimit bots = do
+    bracket (launchBots bots) (mapM_ playerClose) $ \players -> do
+        GameResult winners _ _ <- simulateMatch game turnLimit players
+        TIO.putStrLn
+            ("Winners: " <> T.intercalate ", "
+                (V.toList (fmap playerName (V.filter ((`elem` winners) . playerId) players))))
+
+simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =
     go mempty (gameInitialState game)
     where
@@ -29,7 +39,8 @@ simulateMatch game turnLimit bots =
         faultsOrOrders <- getOrders game bots
         case faultsOrOrders of
             Left faults -> do
-                let winners = fmap playerId bots \\ M.keys faults
+                let losers = fmap fst faults
+                    winners = V.filter (not . (`V.elem` losers)) (fmap playerId bots)
                 return (GameResult
                     winners
                     (Disqualification faults)
@@ -39,13 +50,14 @@ simulateMatch game turnLimit bots =
                     Left result -> return result
                     Right newState -> go (succ turn) newState
 
-sendWorld :: Game game => game -> GameState game -> [Player] -> IO ()
+sendWorld :: Game game => game -> GameState game -> V.Vector Player -> IO ()
 sendWorld _ gameState =
     mapM_ $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
+        -- TODO send world
         sendLine ch "."
 
-getOrders :: Game game => game -> [Player]
-    -> IO (Either Faults (M.Map PlayerId [GameOrder game]))
+getOrders :: forall game. Game game => game -> V.Vector Player
+    -> IO (Either Faults (V.Vector (PlayerId, V.Vector (GameOrder game))))
 getOrders game bots = do
     unparsedOrdersAndFaults <- forM bots $ \(Player {playerId = me, playerOutput = ch}) ->
         do
@@ -53,29 +65,36 @@ getOrders game bots = do
             case faultOrTexts of
                 Left fault -> return (me, Left (pure fault))
                 Right texts -> return (me, Right texts)
-    let ioFaults =
+    let ioFaults :: V.Vector (PlayerId, NonEmpty Fault)
+        ioFaults =
             [ (botIdent, f)
             | (botIdent, Left f) <- unparsedOrdersAndFaults
             ]
+        unparsedOrders :: V.Vector (PlayerId, V.Vector T.Text)
         unparsedOrders =
-            [ (botIdent, ts)
+            [ (botIdent, V.fromList ts)
             | (botIdent, Right ts) <- unparsedOrdersAndFaults
             ]
+        badOrders :: V.Vector (PlayerId, NonEmpty Fault)
         badOrders =
-            mapMaybe
+            vectorMapMaybe
                 (sequence . fmap
-                    (\os -> nonEmpty
+                    (\os -> (nonEmpty . V.toList)
                         [ Fault ("Failed to parse order " <> t)
                         | t@(gameParseOrder game -> Nothing) <- os
                         ]))
                 unparsedOrders
+        goodOrders :: V.Vector (PlayerId, V.Vector (GameOrder game))
         goodOrders =
             fmap
                 (fmap (\os -> [o | (gameParseOrder game -> Just o) <- os]))
                 unparsedOrders
-    case (ioFaults, badOrders, goodOrders) of
-        ([], [], _) -> return (Right (M.fromList goodOrders))
-        _ -> return (Left (M.fromList (ioFaults <> badOrders)))
+    if V.null ioFaults && V.null badOrders
+    then return (Right goodOrders)
+    else return (Left (ioFaults <> badOrders))
+
+vectorMapMaybe :: (a -> Maybe b) -> V.Vector a -> V.Vector b
+vectorMapMaybe f = V.map (fromJust . f) . V.filter (isJust . f)
 
 chReadLinesUntilDot :: InChannel -> IO (Either Fault [T.Text])
 chReadLinesUntilDot ch = do

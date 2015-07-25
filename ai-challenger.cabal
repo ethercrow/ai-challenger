@@ -46,8 +46,9 @@ executable ai-challenger-rps
   main-is:             Main.hs
   build-depends:
       base >= 4.7
-    , containers
     , ai-challenger
+    , containers
+    , vector
   hs-source-dirs:      game-rps
   default-language:    Haskell2010
   ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
@@ -56,8 +57,9 @@ executable ai-challenger-grid
   main-is:             Main.hs
   build-depends:
       base >= 4.7
-    , containers
     , ai-challenger
+    , containers
+    , vector
   hs-source-dirs:      game-grid
   default-language:    Haskell2010
   ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T

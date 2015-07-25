@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -9,8 +11,7 @@ module AIChallenger.Types where
 import Control.DeepSeq.Generics
 import qualified Data.Aeson as A
 import Data.List (intercalate)
-import qualified Data.Map.Strict as M
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, toList)
 import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Text as T
@@ -20,24 +21,33 @@ import Path.Internal
 
 data Bot = Bot
     { botName :: !T.Text
-    , botExecutable :: !(Path Abs File)
+    , botCommunication :: !BotCommunication
     } deriving (Show, Generic, Eq)
 
+data BotCommunication
+    = IdleBot
+    | ExecutableBot !(Path Abs File)
+    | TCPBot !Int
+    deriving (Show, Generic, Eq)
+
 data Match = Match
-    { matchBots :: V.Vector Bot
-    , matchWinners :: V.Vector Bot
-    -- , matchGameOverType :: GameOverType
+    { matchBots :: !(V.Vector Bot)
+    , matchWinners :: !(V.Vector Bot)
+    , matchGameOverType :: !GameOverType
     } deriving (Show, Generic)
 
 data ServerState = ServerState
-    { ssBots :: V.Vector Bot
-    , ssMatches :: V.Vector Match
+    { ssBots :: !(V.Vector Bot)
+    , ssMatches :: !(V.Vector Match)
     } deriving (Show, Generic)
 
 instance NFData (Path a b) where
     rnf (Path x) = rnf x
 
 instance NFData Bot where
+    rnf = genericRnf
+
+instance NFData BotCommunication where
     rnf = genericRnf
 
 instance NFData Match where
@@ -51,13 +61,21 @@ instance A.FromJSON (Path Abs File) where
         case parseAbsFile (T.unpack t) of
             Right p -> return p
             Left err -> fail (show err)
+    parseJSON _ = mempty
 
 instance A.ToJSON (Path a b) where
     toJSON = A.String . T.pack . toFilePath
 
+instance A.ToJSON a => A.ToJSON (NonEmpty a) where
+    toJSON = A.toJSON . toList
+
 instance A.FromJSON Bot
 
+instance A.FromJSON BotCommunication
+
 instance A.ToJSON Bot
+
+instance A.ToJSON BotCommunication
 
 instance A.ToJSON ServerState
 
@@ -76,15 +94,21 @@ newtype Fault = Fault T.Text
 newtype PlayerId = PlayerId Int
     deriving (Show, Eq, Ord, Generic)
 
-type Faults = M.Map PlayerId (NonEmpty Fault)
+-- 'Map k v' doesn't have ToJSON/FromJSON, so it's easier to use vector.
+-- It's not like we have lots of players in a single match.
+type Faults = V.Vector (PlayerId, (NonEmpty Fault))
 
 data GameOverType
     = Elimination
     | TurnLimit
-    | Disqualification Faults
+    | Disqualification !Faults
     deriving (Show, Generic)
 
--- instance A.ToJSON GameOverType
+instance A.ToJSON GameOverType
+
+instance A.ToJSON PlayerId
+
+instance A.ToJSON Fault
 
 instance NFData Fault where
     rnf = genericRnf
@@ -96,15 +120,16 @@ instance NFData PlayerId where
     rnf = genericRnf
 
 data GameResult game = GameResult
-    { gameWinners :: [PlayerId]
-    , gameOverType :: GameOverType
-    , gameReplay :: GameReplay game
+    { gameWinners :: !(V.Vector PlayerId)
+    , gameOverType :: !GameOverType
+    , gameReplay :: !(GameReplay game)
     }
 
-instance Show (GameResult game) where
+instance Show (GameReplay game) => Show (GameResult game) where
     show (GameResult winners reason replay) = unlines
         [ "Game ended in a " <> show reason
-        , "Winners: " <> intercalate ", " (map show winners)
+        , "Winners: " <> intercalate ", " (V.toList (fmap show winners))
+        , "Replay:\n" <> show replay
         ]
 
 class Game game where
@@ -113,7 +138,7 @@ class Game game where
     type GameReplay game
     gameInitialState :: game -> GameState game
     gameParseOrder :: game -> T.Text -> Maybe (GameOrder game)
-    gameAdvance :: M.Map PlayerId [GameOrder game] -> GameState game
+    gameAdvance :: V.Vector (PlayerId, (V.Vector (GameOrder game))) -> GameState game
         -> Either (GameResult game) (GameState game)
     gameTimeout :: GameState game -> GameResult game
     gameExtractReplay :: game -> GameState game -> GameReplay game
@@ -123,4 +148,6 @@ instance Monoid Turn where
     mappend (Turn x) (Turn y) = Turn (x + y)
 
 instance Enum Turn where
+    toEnum = Turn
+    fromEnum (Turn x) = x
     succ (Turn x) = (Turn (succ x))
