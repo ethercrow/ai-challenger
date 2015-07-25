@@ -10,6 +10,7 @@ module AIChallenger.Types where
 
 import Control.DeepSeq.Generics
 import qualified Data.Aeson as A
+import Data.Function (on)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty, toList)
 import Data.Monoid
@@ -84,6 +85,7 @@ instance A.ToJSON Match
 data ServerStateUpdate
     = AddBot Bot
     | RemoveBot Bot
+    | AddMatch Match
 
 newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
@@ -151,3 +153,6 @@ instance Enum Turn where
     toEnum = Turn
     fromEnum (Turn x) = x
     succ (Turn x) = (Turn (succ x))
+
+instance Ord Bot where
+    compare = compare `on` botName

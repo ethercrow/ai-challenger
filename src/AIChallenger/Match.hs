@@ -21,13 +21,17 @@ import AIChallenger.Bot
 import AIChallenger.Channel
 import AIChallenger.Types
 
-launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> IO ()
+launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> IO Match
 launchBotsAndSimulateMatch game turnLimit bots = do
     bracket (launchBots bots) (mapM_ playerClose) $ \players -> do
-        GameResult winners _ _ <- simulateMatch game turnLimit players
+        GameResult winnerIds gameOver _ <- simulateMatch game turnLimit players
+        let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
+        let winnerNames = fmap playerName winnerPlayers
+            winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
         TIO.putStrLn
             ("Winners: " <> T.intercalate ", "
-                (V.toList (fmap playerName (V.filter ((`elem` winners) . playerId) players))))
+                (V.toList winnerNames))
+        return (Match bots winnerBots gameOver)
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =
