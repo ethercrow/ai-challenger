@@ -1,11 +1,12 @@
-{-# LANGUAGE MonadComprehensions #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module AIChallenger.Match
     ( launchBotsAndSimulateMatch
+    , simulateMatch
     ) where
 
 import Control.Exception
@@ -37,7 +38,7 @@ simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult 
 simulateMatch game turnLimit bots =
     go mempty (gameInitialState game)
     where
-    go turn state | turn > turnLimit = return (gameTimeout state)
+    go turn state | turn >= turnLimit = return (gameTimeout state)
     go turn state = do
         sendWorld game state bots
         faultsOrOrders <- getOrders game bots
@@ -71,27 +72,36 @@ getOrders game bots = do
                 Right texts -> return (me, Right texts)
     let ioFaults :: V.Vector (PlayerId, NonEmpty Fault)
         ioFaults =
-            [ (botIdent, f)
-            | (botIdent, Left f) <- unparsedOrdersAndFaults
-            ]
+            vectorMapMaybe
+                (\case
+                    (botIdent, Left f) -> Just (botIdent, f)
+                    _ -> Nothing)
+                unparsedOrdersAndFaults
         unparsedOrders :: V.Vector (PlayerId, V.Vector T.Text)
         unparsedOrders =
-            [ (botIdent, V.fromList ts)
-            | (botIdent, Right ts) <- unparsedOrdersAndFaults
-            ]
+            vectorMapMaybe
+                (\case
+                    (botIdent, Right ts) -> Just (botIdent, V.fromList ts)
+                    _ -> Nothing)
+                unparsedOrdersAndFaults
         badOrders :: V.Vector (PlayerId, NonEmpty Fault)
         badOrders =
             vectorMapMaybe
                 (sequence . fmap
-                    (\os -> (nonEmpty . V.toList)
+                    (\os -> nonEmpty
                         [ Fault ("Failed to parse order " <> t)
-                        | t@(gameParseOrder game -> Nothing) <- os
+                        | t@(gameParseOrder game -> Nothing) <- V.toList os
                         ]))
                 unparsedOrders
         goodOrders :: V.Vector (PlayerId, V.Vector (GameOrder game))
         goodOrders =
             fmap
-                (fmap (\os -> [o | (gameParseOrder game -> Just o) <- os]))
+                (fmap (\os -> 
+                    vectorMapMaybe
+                        (\case
+                            (gameParseOrder game -> Just o) -> Just o
+                            _ -> Nothing)
+                        os))
                 unparsedOrders
     if V.null ioFaults && V.null badOrders
     then return (Right goodOrders)

@@ -50,6 +50,7 @@ instance Game RPS where
                 GT -> [PlayerId 1]
                 LT -> [PlayerId 2]
         in GameResult winners TurnLimit Replay
+    gameExtractReplay _1 _2 = Replay
 
 validateOrders :: V.Vector (PlayerId, V.Vector (GameOrder RPS))
     -> Either Faults (GameOrder RPS, GameOrder RPS)
