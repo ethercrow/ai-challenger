@@ -20,7 +20,7 @@ game = RPS
 
 data WinCounts = WinCounts Int Int
 data Order = R | P | S
-data Replay = Replay
+data Replay = Replay deriving Show
 
 instance Monoid WinCounts where
     mempty = WinCounts 0 0

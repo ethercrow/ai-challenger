@@ -4,6 +4,7 @@
 
 module AIChallenger.Bot
     ( Player (..)
+    , playerClose
     , launchBots
     ) where
 
@@ -27,11 +28,17 @@ data Player = Player
     , playerName :: !T.Text
     , playerInput :: !OutChannel
     , playerOutput :: !InChannel
-    , playerClose :: IO ()
+    , playerAdditionalShutdown :: IO ()
     }
 
+playerClose :: Player -> IO ()
+playerClose (Player _ _ input output shutdown) = do
+    closeInChannel output
+    closeOutChannel input
+    shutdown
+
 launchBots :: V.Vector Bot -> IO (V.Vector Player)
-launchBots = mapM launch . V.zip [1..]
+launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
     where
     launch (index, Bot name IdleBot) =
         return
@@ -41,6 +48,7 @@ launchBots = mapM launch . V.zip [1..]
                 whateverChannel
                 (yesChannel ".")
                 (return ()))
+
     launch (index, Bot name (TCPBot port)) = do
         handleVar <- newEmptyMVar
         finishVar <- newEmptyMVar
@@ -63,6 +71,7 @@ launchBots = mapM launch . V.zip [1..]
                 (outChannelFromHandle h)
                 (inChannelFromHandle h)
                 (hClose h >> putMVar finishVar ()))
+
     launch (index, Bot name (ExecutableBot path)) = do
         handles <-
             createProcess

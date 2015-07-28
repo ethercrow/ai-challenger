@@ -29,9 +29,6 @@ launchBotsAndSimulateMatch game turnLimit bots = do
         let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
         let winnerNames = fmap playerName winnerPlayers
             winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-        TIO.putStrLn
-            ("Winners: " <> T.intercalate ", "
-                (V.toList winnerNames))
         return (Match bots winnerBots gameOver)
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)

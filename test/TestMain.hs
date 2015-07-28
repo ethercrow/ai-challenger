@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Control.Concurrent
 import Data.Monoid
 import qualified Data.Text as T
+import Path
+import System.Directory
 
 import AIChallenger.Bot
 import AIChallenger.Channel
@@ -31,15 +34,30 @@ constPlayer i name move = do
             OutChannel
                 (const (return ()))
                 (return ())
-        , playerClose = return ()
+        , playerAdditionalShutdown = return ()
         }
 
 
 main :: IO ()
 main = do
+    constPlayersTest
+    pythonPlayersTest
+
+constPlayersTest = do
     rocky <- constPlayer 0 "Rocky" "R"
     pepper <- constPlayer 1 "Pepper" "P"
-    scarlett <- constPlayer 2 "Scarlett" "S"
-    GameResult a b c <- simulateMatch RPS.game (Turn 3) [rocky, pepper]
-    putStrLn ("winners: " <> show a)
-    putStrLn ("game over type: " <> show b)
+    GameResult winners gameover replay <- simulateMatch RPS.game (Turn 3) [rocky, pepper]
+    putStrLn ("winners: " <> show winners)
+    putStrLn ("game over type: " <> show gameover)
+    putStrLn ("replay: " <> show replay)
+
+pythonPlayersTest = do
+    curDir <- parseAbsDir =<< getCurrentDirectory
+    let bots =
+            [ Bot "Rocky" (ExecutableBot (curDir </> $(mkRelFile "game-rps/rock.py")))
+            , Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
+            ]
+    Match bots' winners gameover <- launchBotsAndSimulateMatch RPS.game (Turn 3) bots
+    True <- return $! bots == bots'
+    putStrLn ("winners: " <> show winners)
+    putStrLn ("game over type: " <> show gameover)
