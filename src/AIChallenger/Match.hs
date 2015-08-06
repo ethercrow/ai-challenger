@@ -22,13 +22,23 @@ import AIChallenger.Channel
 import AIChallenger.Types
 
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
-launchBotsAndSimulateMatch game turnLimit bots mid = do
-    bracket (launchBots bots) (mapM_ playerClose) $ \players -> do
-        GameResult winnerIds gameOver _ <- simulateMatch game turnLimit players
-        let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
-        let winnerNames = fmap playerName winnerPlayers
-            winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-        return (Match mid bots winnerBots gameOver)
+launchBotsAndSimulateMatch game turnLimit bots mid =
+    bracket
+        (launchBots bots)
+        (mapM_ (either (const (return ())) playerClose))
+        (\playersOrFaults -> do
+            let players = vectorMapMaybe (either (const Nothing) Just) playersOrFaults
+            if V.length players == V.length playersOrFaults
+            then do
+                GameResult winnerIds gameOver _ <- simulateMatch game turnLimit players
+                let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
+                let winnerNames = fmap playerName winnerPlayers
+                    winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
+                return (Match mid bots winnerBots gameOver)
+            else do
+                let winnerNames = fmap playerName players
+                    winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
+                return (Match mid bots winnerBots (Disqualification mempty)))
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =
