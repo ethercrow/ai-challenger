@@ -19,6 +19,7 @@ import qualified Data.Text as T
 import GHC.Generics
 import Path
 import Path.Internal
+import Servant
 
 data Bot = Bot
     { botName :: !T.Text
@@ -31,14 +32,19 @@ data BotCommunication
     | TCPBot !Int
     deriving (Show, Generic, Eq)
 
+newtype MatchId = MatchId Int
+    deriving (Show, Generic, Eq, Ord)
+
 data Match = Match
-    { matchBots :: !(V.Vector Bot)
+    { matchId :: !MatchId
+    , matchBots :: !(V.Vector Bot)
     , matchWinners :: !(V.Vector Bot)
     , matchGameOverType :: !GameOverType
     } deriving (Show, Generic)
 
 data ServerState = ServerState
-    { ssBots :: !(V.Vector Bot)
+    { ssNextMatchId :: !MatchId
+    , ssBots :: !(V.Vector Bot)
     , ssMatches :: !(V.Vector Match)
     } deriving (Show, Generic)
 
@@ -49,6 +55,9 @@ instance NFData Bot where
     rnf = genericRnf
 
 instance NFData BotCommunication where
+    rnf = genericRnf
+
+instance NFData MatchId where
     rnf = genericRnf
 
 instance NFData Match where
@@ -80,7 +89,12 @@ instance A.ToJSON BotCommunication
 
 instance A.ToJSON ServerState
 
+instance A.ToJSON MatchId
+
 instance A.ToJSON Match
+
+instance FromText MatchId where
+    fromText = fmap MatchId <$> fromText
 
 data ServerStateUpdate
     = AddBot Bot
@@ -152,7 +166,10 @@ instance Monoid Turn where
 instance Enum Turn where
     toEnum = Turn
     fromEnum (Turn x) = x
-    succ (Turn x) = (Turn (succ x))
+    succ (Turn x) = Turn (succ x)
 
 instance Ord Bot where
     compare = compare `on` botName
+
+showT :: Show a => a -> T.Text
+showT = T.pack . show

@@ -5,3 +5,4 @@ packages:
 extra-deps:
  - ekg-0.4.0.6
  - ekg-core-0.1.0.4
+ - servant-lucid-0.4.3.1

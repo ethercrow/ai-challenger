@@ -1,6 +1,7 @@
 module AIChallenger.StateVar
     ( StateVar
     , readStateVar
+    , takeNextMatchId
     , mkStateVar
     , modifyStateVar
     ) where
@@ -18,6 +19,13 @@ newtype StateVar = StateVar (MVar ServerState)
 readStateVar :: MonadIO m => StateVar -> m ServerState
 readStateVar (StateVar var) = liftIO (readMVar var)
 
+takeNextMatchId :: MonadIO m => StateVar -> m MatchId
+takeNextMatchId (StateVar var) =
+    liftIO . modifyMVar var $ \value ->
+        let mid@(MatchId x) = ssNextMatchId value
+            newValue = value { ssNextMatchId = MatchId (x + 1) }
+        in newValue `deepseq` return $! (newValue, mid)
+
 modifyStateVar :: MonadIO m => StateVar -> ServerStateUpdate -> m ServerState
 modifyStateVar (StateVar var) u =
     liftIO . modifyMVar var $ \value ->
@@ -25,9 +33,12 @@ modifyStateVar (StateVar var) u =
         in newValue `deepseq` return $! (newValue, newValue)
 
 mkStateVar :: MonadIO m => m StateVar
-mkStateVar = StateVar <$> liftIO (newMVar (ServerState mempty mempty))
+mkStateVar = StateVar <$> liftIO (newMVar (ServerState (MatchId 0) mempty mempty))
 
-applyServerStateUpdate (AddBot bot) (ServerState bots matches) =
-    ServerState (pure bot <> bots) matches
-applyServerStateUpdate (RemoveBot bot) (ServerState bots matches) =
-    ServerState (V.filter (/= bot) bots) matches
+applyServerStateUpdate :: ServerStateUpdate -> ServerState -> ServerState
+applyServerStateUpdate (AddBot bot) ss =
+    ss { ssBots = pure bot <> ssBots ss }
+applyServerStateUpdate (RemoveBot bot) ss =
+    ss { ssBots = V.filter (/= bot) (ssBots ss) }
+applyServerStateUpdate (AddMatch match) ss =
+    ss { ssMatches = pure match <> ssMatches ss }

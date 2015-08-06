@@ -20,6 +20,7 @@ library
     , deepseq
     , deepseq-generics
     , ekg
+    , lucid
     , mtl
     , network >= 2.6
     , network-simple >= 0.4
@@ -27,6 +28,7 @@ library
     , process
     , semigroups
     , servant >= 0.4.2
+    , servant-lucid
     , servant-server >= 0.4.2
     , text >= 1.2
     , transformers
@@ -40,6 +42,8 @@ library
       AIChallenger.Match
       AIChallenger.Types
   other-modules:
+      AIChallenger.Exception
+      AIChallenger.HTML
       AIChallenger.StateVar
 
 executable ai-challenger-rps

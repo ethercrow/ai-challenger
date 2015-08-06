@@ -9,8 +9,8 @@ module AIChallenger.Bot
     ) where
 
 import Control.Concurrent
-import Control.Exception (SomeException, catch)
 import Control.Monad
+import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Network.Simple.TCP as TCP
@@ -20,8 +20,9 @@ import System.IO
 import System.Process
 import qualified Path as P
 
-import AIChallenger.Types
 import AIChallenger.Channel
+import AIChallenger.Exception
+import AIChallenger.Types
 
 data Player = Player
     { playerId :: !PlayerId
@@ -90,9 +91,11 @@ launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
                         name
                         (outChannelFromHandle hIn)
                         (inChannelFromHandle hOut)
-                        (catch
-                            (terminateProcess procHandle)
-                            (\(_ :: SomeException) -> return ())))
+                        (catchAll (terminateProcess procHandle)))
             _ -> do 
-                print ("failed to start " ++ P.toFilePath path)
+                putStrLn ("failed to start " <> P.toFilePath path)
                 exitWith (ExitFailure 10)
+
+instance Show Player where
+    show (Player pid name _inCh _outCh _close) =
+        show pid <> " " <> T.unpack name

@@ -15,21 +15,20 @@ import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import qualified Data.Vector as V
 
 import AIChallenger.Bot
 import AIChallenger.Channel
 import AIChallenger.Types
 
-launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> IO Match
-launchBotsAndSimulateMatch game turnLimit bots = do
+launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
+launchBotsAndSimulateMatch game turnLimit bots mid = do
     bracket (launchBots bots) (mapM_ playerClose) $ \players -> do
         GameResult winnerIds gameOver _ <- simulateMatch game turnLimit players
         let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
         let winnerNames = fmap playerName winnerPlayers
             winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-        return (Match bots winnerBots gameOver)
+        return (Match mid bots winnerBots gameOver)
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =
@@ -53,8 +52,8 @@ simulateMatch game turnLimit bots =
                     Right newState -> go (succ turn) newState
 
 sendWorld :: Game game => game -> GameState game -> V.Vector Player -> IO ()
-sendWorld _ gameState =
-    mapM_ $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
+sendWorld _ gameState players = do
+    forM_ players $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
         -- TODO send world
         sendLine ch "."
 
@@ -109,13 +108,11 @@ vectorMapMaybe f = V.map (fromJust . f) . V.filter (isJust . f)
 
 chReadLinesUntilDot :: InChannel -> IO (Either Fault [T.Text])
 chReadLinesUntilDot ch = do
-    linesOrException <- try (fmap reverse (go []))
-    return $ case linesOrException of
-        Left (SomeException e) -> Left (Fault (T.pack (show e)))
-        Right x -> Right x
+    fmap (fmap reverse) (go [])
     where
     go acc = do
-        l <- receiveLine ch
-        case l of
-          "." -> return acc
-          _ -> go (l : acc)
+        faultOrLine <- receiveLine ch
+        case faultOrLine of
+          Right "." -> return (Right acc)
+          Right l -> go (l : acc)
+          Left fault -> return (Left fault)
