@@ -26,13 +26,13 @@ constPlayer i name move = do
                     flush <- takeMVar flushVar
                     putMVar flushVar (not flush)
                     if flush
-                    then return "."
-                    else return move)
+                    then return (Right ".")
+                    else return (Right move))
                 (return False)
                 (return ())
         , playerInput =
             OutChannel
-                (const (return ()))
+                (const (return (Right ())))
                 (return ())
         , playerAdditionalShutdown = return ()
         }
@@ -43,6 +43,7 @@ main = do
     constPlayersTest
     pythonPlayersTest
 
+constPlayersTest :: IO ()
 constPlayersTest = do
     rocky <- constPlayer 0 "Rocky" "R"
     pepper <- constPlayer 1 "Pepper" "P"
@@ -51,13 +52,14 @@ constPlayersTest = do
     putStrLn ("game over type: " <> show gameover)
     putStrLn ("replay: " <> show replay)
 
+pythonPlayersTest :: IO ()
 pythonPlayersTest = do
     curDir <- parseAbsDir =<< getCurrentDirectory
     let bots =
             [ Bot "Rocky" (ExecutableBot (curDir </> $(mkRelFile "game-rps/rock.py")))
             , Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
             ]
-    Match bots' winners gameover <- launchBotsAndSimulateMatch RPS.game (Turn 3) bots
+    Match (MatchId 0) bots' winners gameover <- launchBotsAndSimulateMatch RPS.game (Turn 3) bots (MatchId 0)
     True <- return $! bots == bots'
     putStrLn ("winners: " <> show winners)
     putStrLn ("game over type: " <> show gameover)
