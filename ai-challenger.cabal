@@ -45,6 +45,7 @@ library
       AIChallenger.Exception
       AIChallenger.HTML
       AIChallenger.StateVar
+      AIChallenger.WebApp
 
 executable ai-challenger-rps
   main-is:             Main.hs
