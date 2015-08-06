@@ -29,7 +29,8 @@ import AIChallenger.StateVar
 import AIChallenger.Types
 
 type WebAPI
-    = "state" :> Get '[JSON] ServerState
+    = Get '[HTML] MainPage
+    :<|> "state" :> Get '[JSON] ServerState
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-tournament" :> Post '[PlainText] T.Text
     :<|> "replay" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
@@ -42,11 +43,11 @@ startJudge game = do
 
 app :: Game game => game -> StateVar -> Wai.Application
 app game stateVar =
-    let handlers =
-            readStateVar stateVar :<|>
-            postBot stateVar :<|>
-            launchTournament game stateVar :<|>
-            replay stateVar
+    let handlers = mainPage stateVar
+            :<|> readStateVar stateVar
+            :<|> postBot stateVar
+            :<|> launchTournament game stateVar
+            :<|> replay stateVar
     in serve (Proxy :: Proxy WebAPI) handlers
 
 postBot :: MonadIO m => StateVar -> Bot -> m Bot
@@ -74,3 +75,6 @@ replay stateVar mid = do
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
         [match] -> return (MatchPage match)
+
+mainPage :: MonadIO m => StateVar -> m MainPage
+mainPage stateVar = MainPage <$> readStateVar stateVar
