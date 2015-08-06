@@ -1,16 +1,25 @@
-language: haskell
 
-ghc: '7.10'
+sudo: false
+
+addons:
+  apt:
+    sources:
+    - hvr-ghc
+    packages:
+    - ghc-7.10.2
+    - libgmp-dev
+
+cache:
+  directories:
+    - $HOME/.stack
 
 before_install:
-  - wget -q -O- http://download.fpcomplete.com/ubuntu/fpco.key | sudo apt-key add -
-  - echo 'deb http://download.fpcomplete.com/ubuntu/precise stable main' | sudo tee /etc/apt/sources.list.d/fpco.list
-  - sudo apt-get update
-  - sudo apt-get install stack -y
-
-install:
-  - stack setup
+  - mkdir -p ~/.local/bin
+  - export PATH=~/.local/bin:/opt/ghc/7.10.2/bin:$PATH
+  - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.2.0/stack-0.1.2.0-x86_64-linux.gz | gunzip > ~/.local/bin/stack
+  - chmod a+x ~/.local/bin/stack
 
 script:
+  - stack setup
   - stack install
   - stack test
