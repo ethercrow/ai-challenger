@@ -1,5 +1,5 @@
 flags: {}
-resolver: nightly-2015-08-06
+resolver: lts-3.0
 packages:
  - '.'
 extra-deps:

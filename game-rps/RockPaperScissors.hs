@@ -5,6 +5,9 @@
 
 module RockPaperScissors
     ( game
+    , WinCounts(..)
+    , Order(..)
+    , Replay(..)
     ) where
 
 import Data.Maybe
@@ -19,11 +22,11 @@ game :: RPS
 game = RPS
 
 data WinCounts = WinCounts Int Int
-    deriving Show
+    deriving (Show, Eq)
 data Order = R | P | S
-    deriving Show
+    deriving (Show, Eq)
 data Replay = Replay (V.Vector (WinCounts, Order, Order))
-    deriving Show
+    deriving (Show, Eq)
 
 instance Monoid Replay where
     mempty = Replay mempty

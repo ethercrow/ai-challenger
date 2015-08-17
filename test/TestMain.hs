@@ -3,8 +3,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import Control.Concurrent
-import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import Path
 import System.Directory
 
@@ -42,24 +42,26 @@ main :: IO ()
 main = do
     constPlayersTest
     pythonPlayersTest
+    putStrLn "All done"
 
 constPlayersTest :: IO ()
 constPlayersTest = do
     rocky <- constPlayer 0 "Rocky" "R"
     pepper <- constPlayer 1 "Pepper" "P"
     GameResult winners gameover replay <- simulateMatch RPS.game (Turn 3) [rocky, pepper]
-    putStrLn ("winners: " <> show winners)
-    putStrLn ("game over type: " <> show gameover)
-    putStrLn ("replay: " <> show replay)
+    True <- return $! winners == V.fromList [PlayerId 2]
+    True <- return $! TurnLimit == gameover
+    True <- return $! replay == RPS.Replay (V.map (\i -> (RPS.WinCounts 0 i, RPS.R, RPS.P)) [1, 2, 3])
+    return ()
 
 pythonPlayersTest :: IO ()
 pythonPlayersTest = do
     curDir <- parseAbsDir =<< getCurrentDirectory
-    let bots =
-            [ Bot "Rocky" (ExecutableBot (curDir </> $(mkRelFile "game-rps/rock.py")))
-            , Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
-            ]
+    let rocky = Bot "Rocky" (ExecutableBot (curDir </> $(mkRelFile "game-rps/rock.py")))
+        pepper = Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
+        bots = [rocky, pepper]
     Match (MatchId 0) bots' winners gameover <- launchBotsAndSimulateMatch RPS.game (Turn 3) bots (MatchId 0)
     True <- return $! bots == bots'
-    putStrLn ("winners: " <> show winners)
-    putStrLn ("game over type: " <> show gameover)
+    True <- return $! winners == [pepper]
+    True <- return $! TurnLimit == gameover
+    return ()

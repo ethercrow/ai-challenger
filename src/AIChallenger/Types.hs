@@ -105,7 +105,7 @@ newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
 
 newtype Fault = Fault T.Text
-    deriving (Show, Generic)
+    deriving (Show, Generic, Eq)
 
 newtype PlayerId = PlayerId Int
     deriving (Show, Eq, Ord, Generic)
@@ -118,7 +118,7 @@ data GameOverType
     = Elimination
     | TurnLimit
     | Disqualification !Faults
-    deriving (Show, Generic)
+    deriving (Show, Generic, Eq)
 
 instance A.ToJSON GameOverType
 
