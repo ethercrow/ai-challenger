@@ -16,8 +16,10 @@ import Control.Concurrent
 import Control.Monad.Trans
 import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector as V
 import qualified Network.Wai as Wai
+import Path
 import Servant
 import Servant.HTML.Lucid
 
@@ -31,7 +33,7 @@ type WebAPI
     :<|> "state" :> Get '[JSON] ServerState
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-tournament" :> Post '[PlainText] T.Text
-    :<|> "replay" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
 
 webApp :: Game game => game -> StateVar -> Wai.Application
 webApp game stateVar =
@@ -56,6 +58,7 @@ launchTournament game stateVar = do
         V.forM_ pairs $ \pair -> do
             mid <- takeNextMatchId stateVar
             result <- launchBotsAndSimulateMatch game (Turn 100) pair mid
+            putStrLn ("Finished " <> show mid)
             _ <- modifyStateVar stateVar (AddMatch result)
             return ()
     return (T.pack (show (length pairs) <> " matches scheduled"))
@@ -66,7 +69,9 @@ replay stateVar mid = do
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
-        [match] -> return (MatchPage match)
+        [match] -> do
+            replayText <- liftIO (TLIO.readFile (toFilePath (matchReplayPath match)))
+            return (MatchPage match replayText)
         _ -> error "match id collision, this should never happen"
 
 mainPage :: MonadIO m => StateVar -> m MainPage

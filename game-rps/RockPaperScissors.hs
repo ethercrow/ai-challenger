@@ -12,7 +12,11 @@ module RockPaperScissors
 
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector as V
+import Path
+import System.IO
 
 import AIChallenger.Types
 
@@ -62,7 +66,13 @@ instance Game RPS where
                 GT -> [PlayerId 1]
                 LT -> [PlayerId 2]
         in GameResult winners TurnLimit replay
-    gameExtractReplay _1 (_state, replay) = replay
+    gameExtractReplay _ (_state, replay) = replay
+    gameSaveReplay _ path (Replay turns) = do
+        let filepath = toFilePath path
+            formatTurn (WinCounts c1 c2, o1, o2) =
+                TL.pack (unwords [show c1, show c2, show o1, show o2])
+        withFile filepath WriteMode $ \h -> 
+            mapM_ (TLIO.hPutStrLn h . formatTurn) turns
 
 validateOrders :: V.Vector (PlayerId, V.Vector Order)
     -> Either Faults (Order, Order)

@@ -16,13 +16,15 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Path
 
 import AIChallenger.Bot
 import AIChallenger.Channel
 import AIChallenger.Types
 
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
-launchBotsAndSimulateMatch game turnLimit bots mid =
+launchBotsAndSimulateMatch game turnLimit bots mid@(MatchId x) = do
+    replayPath <- parseAbsFile ("/tmp/" <> show x <> ".replay")
     bracket
         (launchBots bots)
         (mapM_ (either (const (return ())) playerClose))
@@ -30,15 +32,18 @@ launchBotsAndSimulateMatch game turnLimit bots mid =
             let players = vectorMapMaybe (either (const Nothing) Just) playersOrFaults
             if V.length players == V.length playersOrFaults
             then do
-                GameResult winnerIds gameOver _ <- simulateMatch game turnLimit players
+                GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
+                gameSaveReplay game replayPath replay
                 let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
                 let winnerNames = fmap playerName winnerPlayers
                     winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-                return (Match mid bots winnerBots gameOver)
+                return (Match mid bots winnerBots gameOver replayPath)
             else do
                 let winnerNames = fmap playerName players
                     winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-                return (Match mid bots winnerBots (Disqualification mempty)))
+                    replay = gameExtractReplay game (gameInitialState game)
+                gameSaveReplay game replayPath replay
+                return (Match mid bots winnerBots (Disqualification mempty) replayPath))
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =

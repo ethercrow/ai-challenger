@@ -40,6 +40,7 @@ data Match = Match
     , matchBots :: !(V.Vector Bot)
     , matchWinners :: !(V.Vector Bot)
     , matchGameOverType :: !GameOverType
+    , matchReplayPath :: !(Path Abs File)
     } deriving (Show, Generic)
 
 data ServerState = ServerState
@@ -158,6 +159,7 @@ class Game game where
         -> Either (GameResult game) (GameState game)
     gameTimeout :: GameState game -> GameResult game
     gameExtractReplay :: game -> GameState game -> GameReplay game
+    gameSaveReplay :: game -> Path Abs File -> GameReplay game -> IO ()
 
 instance Monoid Turn where
     mempty = Turn 0
