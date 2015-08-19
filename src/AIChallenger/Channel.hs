@@ -11,17 +11,6 @@ import System.IO
 import AIChallenger.Exception
 import AIChallenger.Types
 
-data OutChannel = OutChannel
-    { sendLine :: T.Text -> IO (Either Fault ())
-    , closeOutChannel :: IO ()
-    }
-
-data InChannel = InChannel
-    { receiveLine :: IO (Either Fault T.Text)
-    , channelEOF :: IO Bool
-    , closeInChannel :: IO ()
-    }
-
 inChannelFromHandle :: Handle -> InChannel
 inChannelFromHandle h = InChannel
     (catch

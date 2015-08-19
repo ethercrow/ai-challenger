@@ -67,9 +67,10 @@ simulateMatch game turnLimit bots =
                     Right newState -> go (succ turn) newState
 
 sendWorld :: Game game => game -> GameState game -> V.Vector Player -> IO ()
-sendWorld _ gameState players = do
+sendWorld game gameState players = do
     forM_ players $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
-        -- TODO send world
+        sendLine ch ("Y " <> showT me)
+        gameSendWorld game gameState (sendLine ch)
         sendLine ch "."
 
 getOrders :: forall game. Game game => game -> V.Vector Player

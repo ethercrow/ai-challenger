@@ -160,6 +160,7 @@ class Game game where
     gameTimeout :: GameState game -> GameResult game
     gameExtractReplay :: game -> GameState game -> GameReplay game
     gameSaveReplay :: game -> Path Abs File -> GameReplay game -> IO ()
+    gameSendWorld :: game -> GameState game -> (T.Text -> IO (Either Fault ())) -> IO ()
 
 instance Monoid Turn where
     mempty = Turn 0
@@ -175,3 +176,14 @@ instance Ord Bot where
 
 showT :: Show a => a -> T.Text
 showT = T.pack . show
+
+data OutChannel = OutChannel
+    { sendLine :: T.Text -> IO (Either Fault ())
+    , closeOutChannel :: IO ()
+    }
+
+data InChannel = InChannel
+    { receiveLine :: IO (Either Fault T.Text)
+    , channelEOF :: IO Bool
+    , closeInChannel :: IO ()
+    }
