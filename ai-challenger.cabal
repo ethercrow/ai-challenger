@@ -41,6 +41,7 @@ library
       AIChallenger.Channel
       AIChallenger.Match
       AIChallenger.Types
+      Data.Vector.Extended
   other-modules:
       AIChallenger.Exception
       AIChallenger.HTML
@@ -62,10 +63,15 @@ executable ai-challenger-rps
 
 executable ai-challenger-grid
   main-is:             Main.hs
+  other-modules:
+      Grid
   build-depends:
       base >= 4.8
     , ai-challenger
     , containers
+    , path
+    , semigroups
+    , text
     , vector
   hs-source-dirs:      game-grid
   default-language:    Haskell2010
@@ -74,6 +80,8 @@ executable ai-challenger-grid
 Test-Suite RPSTest
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
+  other-modules:
+      RockPaperScissors
   hs-source-dirs: game-rps, test
   ghc-options: -Wall -ferror-spans
   default-language:    Haskell2010

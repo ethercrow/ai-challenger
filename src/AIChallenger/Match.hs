@@ -12,14 +12,12 @@ module AIChallenger.Match
 import Control.Exception
 import Control.Monad
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
-import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
-import qualified Data.Vector as V
+import qualified Data.Vector.Extended as V
 import Path
 
 import AIChallenger.Bot
-import AIChallenger.Channel
 import AIChallenger.Types
 
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
@@ -29,7 +27,7 @@ launchBotsAndSimulateMatch game turnLimit bots mid@(MatchId x) = do
         (launchBots bots)
         (mapM_ (either (const (return ())) playerClose))
         (\playersOrFaults -> do
-            let players = vectorMapMaybe (either (const Nothing) Just) playersOrFaults
+            let players = V.mapMaybe (either (const Nothing) Just) playersOrFaults
             if V.length players == V.length playersOrFaults
             then do
                 GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
@@ -84,21 +82,21 @@ getOrders game bots = do
                 Right texts -> return (me, Right texts)
     let ioFaults :: V.Vector (PlayerId, NonEmpty Fault)
         ioFaults =
-            vectorMapMaybe
+            V.mapMaybe
                 (\case
                     (botIdent, Left f) -> Just (botIdent, f)
                     _ -> Nothing)
                 unparsedOrdersAndFaults
         unparsedOrders :: V.Vector (PlayerId, V.Vector T.Text)
         unparsedOrders =
-            vectorMapMaybe
+            V.mapMaybe
                 (\case
                     (botIdent, Right ts) -> Just (botIdent, V.fromList ts)
                     _ -> Nothing)
                 unparsedOrdersAndFaults
         badOrders :: V.Vector (PlayerId, NonEmpty Fault)
         badOrders =
-            vectorMapMaybe
+            V.mapMaybe
                 (sequence . fmap
                     (\os -> nonEmpty
                         [ Fault ("Failed to parse order " <> t)
@@ -109,7 +107,7 @@ getOrders game bots = do
         goodOrders =
             fmap
                 (fmap (\os -> 
-                    vectorMapMaybe
+                    V.mapMaybe
                         (\case
                             (gameParseOrder game -> Just o) -> Just o
                             _ -> Nothing)
@@ -118,9 +116,6 @@ getOrders game bots = do
     if V.null ioFaults && V.null badOrders
     then return (Right goodOrders)
     else return (Left (ioFaults <> badOrders))
-
-vectorMapMaybe :: (a -> Maybe b) -> V.Vector a -> V.Vector b
-vectorMapMaybe f = V.map (fromJust . f) . V.filter (isJust . f)
 
 chReadLinesUntilDot :: InChannel -> IO (Either Fault [T.Text])
 chReadLinesUntilDot ch = do

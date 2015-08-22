@@ -113,7 +113,7 @@ newtype PlayerId = PlayerId Int
 
 -- 'Map k v' doesn't have ToJSON/FromJSON, so it's easier to use vector.
 -- It's not like we have lots of players in a single match.
-type Faults = V.Vector (PlayerId, (NonEmpty Fault))
+type Faults = V.Vector (PlayerId, NonEmpty Fault)
 
 data GameOverType
     = Elimination

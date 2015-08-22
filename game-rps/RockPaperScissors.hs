@@ -55,7 +55,7 @@ instance Game RPS where
                 let winners =
                         V.filter
                             (not . (`V.elem` (fmap fst faults)))
-                            (fmap PlayerId [0, 1])
+                            (fmap PlayerId [1, 2])
                 in Left (GameResult winners (Disqualification faults) oldReplay)
             Right orders@(o1, o2) ->
                 let newScore = oldScore <> scoreRound orders
