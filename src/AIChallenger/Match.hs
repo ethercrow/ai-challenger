@@ -23,25 +23,21 @@ import AIChallenger.Types
 launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
 launchBotsAndSimulateMatch game turnLimit bots mid@(MatchId x) = do
     replayPath <- parseAbsFile ("/tmp/" <> show x <> ".replay")
+    let work (Right players) = do
+             GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
+             gameSaveReplay game replayPath replay
+             let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
+             let winnerNames = fmap playerName winnerPlayers
+                 winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
+             return (Match mid bots winnerBots gameOver replayPath)
+        work (Left (winnerBots, faults)) = do
+             let replay = gameExtractReplay game (gameInitialState game)
+             gameSaveReplay game replayPath replay
+             return (Match mid bots winnerBots (Disqualification faults) replayPath)
     bracket
         (launchBots bots)
-        (mapM_ (either (const (return ())) playerClose))
-        (\playersOrFaults -> do
-            let players = V.mapMaybe (either (const Nothing) Just) playersOrFaults
-            if V.length players == V.length playersOrFaults
-            then do
-                GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
-                gameSaveReplay game replayPath replay
-                let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
-                let winnerNames = fmap playerName winnerPlayers
-                    winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-                return (Match mid bots winnerBots gameOver replayPath)
-            else do
-                let winnerNames = fmap playerName players
-                    winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-                    replay = gameExtractReplay game (gameInitialState game)
-                gameSaveReplay game replayPath replay
-                return (Match mid bots winnerBots (Disqualification mempty) replayPath))
+        (either (const (return ())) (V.mapM_ playerClose))
+        work
 
 simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
 simulateMatch game turnLimit bots =

@@ -13,7 +13,7 @@ import Control.Exception
 import Control.Monad
 import Data.Monoid
 import qualified Data.Text as T
-import qualified Data.Vector as V
+import qualified Data.Vector.Extended as V
 import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
 import System.Exit
@@ -39,19 +39,30 @@ playerClose (Player _ _ input output shutdown) = do
     closeOutChannel input
     shutdown
 
-launchBots :: V.Vector Bot -> IO (V.Vector (Either Fault Player))
-launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
+launchBots :: V.Vector Bot -> IO (Either (V.Vector Bot, Faults) (V.Vector Player))
+launchBots bots = do
+    let playerIds = fmap PlayerId [1 .. V.length bots]
+    playersAndFaults <- mapM launch (V.zip playerIds bots)
+    let players = V.mapMaybe (either (const Nothing) Just) playersAndFaults
+    if V.length players == V.length playersAndFaults
+    then return (Right players)
+    else do
+        mapM_ playerClose players
+        let faults = V.mapMaybe (either Just (const Nothing)) playersAndFaults
+            winnerNames = fmap playerName players
+            winnerBots = V.filter ((`elem` winnerNames). botName) bots
+        return (Left (winnerBots, faults))
     where
-    launch (index, Bot name IdleBot) =
+    launch (pid, Bot name IdleBot) =
         return $ Right
             (Player
-                (PlayerId index)
+                pid
                 name 
                 whateverChannel
                 (yesChannel ".")
                 (return ()))
 
-    launch (index, Bot name (TCPBot port)) = do
+    launch (pid, Bot name (TCPBot port)) = do
         hopefullyPlayer <- try $ do
             handleVar <- newEmptyMVar
             finishVar <- newEmptyMVar
@@ -69,7 +80,7 @@ launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
             h <- takeMVar handleVar
             return
                 (Player
-                    (PlayerId index)
+                    pid
                     name
                     (outChannelFromHandle h)
                     (inChannelFromHandle h)
@@ -79,9 +90,9 @@ launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
             Left e ->
                 let msg = "Failed to launch bot '" <> name <> "': "
                         <> T.pack (show (e :: SomeException))
-                in return (Left (Fault msg))
+                in return (Left (pid, pure (Fault msg)))
 
-    launch (index, Bot name (ExecutableBot path)) = do
+    launch (pid, Bot name (ExecutableBot path)) = do
         playerOrException <- try $ do
             handles <-
                 createProcess
@@ -96,7 +107,7 @@ launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
                     hSetBuffering hIn LineBuffering
                     return
                         (Player
-                            (PlayerId index)
+                            pid
                             name
                             (outChannelFromHandle hIn)
                             (inChannelFromHandle hOut)
@@ -109,7 +120,7 @@ launchBots bots = mapM launch (V.zip [1 .. V.length bots] bots)
             Left e ->
                 let msg = "Failed to launch bot '" <> name <> "': "
                         <> T.pack (show (e :: SomeException))
-                in return (Left (Fault msg))
+                in return (Left (pid, pure (Fault msg)))
 
 instance Show Player where
     show (Player pid name _inCh _outCh _close) =
