@@ -50,6 +50,8 @@ library
 
 executable ai-challenger-rps
   main-is:             Main.hs
+  other-modules:
+      RockPaperScissors
   build-depends:
       base >= 4.8
     , ai-challenger

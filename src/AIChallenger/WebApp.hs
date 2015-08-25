@@ -28,6 +28,8 @@ import AIChallenger.Match
 import AIChallenger.StateVar
 import AIChallenger.Types
 
+turnLimit = Turn 100
+
 type WebAPI
     = Get '[HTML] MainPage
     :<|> "state" :> Get '[JSON] ServerState
@@ -57,7 +59,7 @@ launchTournament game stateVar = do
     _ <- liftIO . forkIO $ do
         V.forM_ pairs $ \pair -> do
             mid <- takeNextMatchId stateVar
-            result <- launchBotsAndSimulateMatch game (Turn 100) pair mid
+            result <- launchBotsAndSimulateMatch game turnLimit pair mid
             putStrLn ("Finished " <> show mid)
             _ <- modifyStateVar stateVar (AddMatch result)
             return ()

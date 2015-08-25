@@ -13,6 +13,7 @@ import Data.Monoid
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Semigroup as S
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector.Extended as V
 import Path
@@ -57,6 +58,7 @@ data Replay = Replay (V.Vector (Grid, V.Vector Order, V.Vector Order))
 
 instance Monoid Replay where
     mappend (Replay r1) (Replay r2) = Replay (mappend r1 r2)
+    mempty = Replay mempty
 
 initialGrid :: Grid
 initialGrid = Grid $ mconcat
@@ -84,13 +86,31 @@ instance Game GridGame where
                             (not . (`V.elem` (fmap fst faults)))
                             (pure (PlayerId 1) <> pure (PlayerId 2))
                 in Left (GameResult winners (Disqualification faults) oldReplay)
-            Right orders@(os1, os2) ->
+            Right (os1, os2) ->
                 let newGrid = oldGrid
                 in Right (newGrid, oldReplay <> Replay (pure (newGrid, os1, os2)))
     gameExtractReplay _ (_state, replay) = replay
     gameSaveReplay _ path (Replay turns) = do
         let filepath = toFilePath path
-            formatTurn (grid, os1, os2) = "todo"
+            formatTurn (grid, os1, os2) = TL.intercalate "\n"
+                [ "W"
+                , formatGrid grid
+                , "O 1"
+                , formatOrders os1
+                , "O 2"
+                , formatOrders os2
+                , "."
+                ]
+            formatGrid (Grid grid) =
+                let charGrid = fmap (fmap tileToChar) grid
+                    tileToChar Empty = '.'
+                    tileToChar (Captured (PlayerId 1)) = 'X'
+                    tileToChar (Captured (PlayerId 2)) = 'O'
+                    tileToChar (Captured (PlayerId _)) = '?'
+                in TL.intercalate "\n" (V.toList (fmap (TL.pack . V.toList) charGrid))
+            formatOrders = TL.intercalate "\n"
+                . fmap (\(Capture (x, y)) -> TL.pack (unwords ["C", show x, show y]))
+                . V.toList
         withFile filepath WriteMode $ \h -> 
             mapM_ (TLIO.hPutStrLn h . formatTurn) turns
     gameSendWorld _ _state _sendLine = return ()
