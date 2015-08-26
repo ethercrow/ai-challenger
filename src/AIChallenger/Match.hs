@@ -64,7 +64,7 @@ sendWorld :: Game game => game -> GameState game -> V.Vector Player -> IO ()
 sendWorld game gameState players = do
     forM_ players $ \(Player { playerId = PlayerId me, playerInput = ch }) -> do
         sendLine ch ("Y " <> showT me)
-        gameSendWorld game gameState (sendLine ch)
+        gameSendWorld game (PlayerId me) gameState (sendLine ch)
         sendLine ch "."
 
 getOrders :: forall game. Game game => game -> V.Vector Player

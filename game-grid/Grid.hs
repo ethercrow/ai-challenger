@@ -107,19 +107,16 @@ instance Game GridGame where
                 , formatOrders os2
                 , "."
                 ]
-            formatGrid (Grid grid) =
-                let charGrid = fmap (fmap tileToChar) grid
-                    tileToChar Empty = '.'
-                    tileToChar (Captured (PlayerId 1)) = 'X'
-                    tileToChar (Captured (PlayerId 2)) = 'O'
-                    tileToChar (Captured (PlayerId _)) = '?'
-                in TL.intercalate "\n" (V.toList (fmap (TL.pack . V.toList) charGrid))
             formatOrders = TL.intercalate "\n"
                 . fmap (\(Capture (x, y)) -> TL.pack (unwords ["C", show x, show y]))
                 . V.toList
         withFile filepath WriteMode $ \h -> 
             mapM_ (TLIO.hPutStrLn h . formatTurn) turns
-    gameSendWorld _ _state _sendLine = return ()
+    gameSendWorld _ pid (grid, _) sendLn = do
+        let Energy e = energyBudget grid pid
+        _ <- sendLn ("E " <> showT e)
+        _ <- sendLn (TL.toStrict (formatGrid grid))
+        return ()
     gameTimeout (grid, replay) =
         let Score s1 s2 = gridScore grid
             winners = case compare s1 s2 of
@@ -127,6 +124,15 @@ instance Game GridGame where
                 GT -> pure (PlayerId 1)
                 LT -> pure (PlayerId 2)
         in GameResult winners TurnLimit replay
+
+formatGrid :: Grid -> TL.Text
+formatGrid (Grid grid) =
+    let charGrid = fmap (fmap tileToChar) grid
+        tileToChar Empty = '.'
+        tileToChar (Captured (PlayerId 1)) = 'X'
+        tileToChar (Captured (PlayerId 2)) = 'O'
+        tileToChar (Captured (PlayerId _)) = '?'
+    in TL.intercalate "\n" (V.toList (fmap (TL.pack . V.toList) charGrid))
 
 validateOrders :: V.Vector (PlayerId, V.Vector Order)
     -> Either Faults (V.Vector Order, V.Vector Order)
@@ -164,6 +170,17 @@ suffocate grid@(Grid g) =
                 VM.write mgrid y (row V.// pure (x, Empty))
     in Grid $ V.modify killSurrounded g
 
+neighborhood4 :: Point -> Grid -> [Tile]
+neighborhood4 (x, y) (Grid grid0) =
+    let neighborPoints =
+            [ (x + dx, y + dy)
+            | dx <- [-1, 0, 1]
+            , dy <- [-1, 0, 1]
+            , (dx + dy) `elem` [-1, 1]
+            ]
+        get (i, j) = (grid0 V.!? j) >>= (V.!? i)
+    in mapMaybe get neighborPoints
+
 neighborhood8 :: Point -> Grid -> [Tile]
 neighborhood8 (x, y) (Grid grid0) =
     let neighborPoints =
@@ -174,6 +191,12 @@ neighborhood8 (x, y) (Grid grid0) =
             ]
         get (i, j) = (grid0 V.!? j) >>= (V.!? i)
     in mapMaybe get neighborPoints
+
+(!?) :: Grid -> Point -> Maybe Tile
+(Grid grid) !? (x, y) = (grid V.!? y) >>= (V.!? x)
+
+(!) :: Grid -> Point -> Tile
+(Grid grid) ! (x, y) = (grid V.! y) V.! x
 
 applyOrders :: (V.Vector Order, V.Vector Order) -> Grid -> Grid
 applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
@@ -186,3 +209,17 @@ applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
         V.forM_ os2 $ \(Capture (x, y)) -> do
             row <- VM.read mgrid y
             VM.write mgrid y (row V.// pure (x, Captured (PlayerId 2)))
+
+newtype Energy = Energy Int
+
+energyBudget :: Grid -> PlayerId -> Energy
+energyBudget grid pid = Energy $ sum
+    [ 1
+    | x <- [0 .. gridSize - 1]
+    , y <- [0 .. gridSize - 1]
+    , grid ! (x, y) == Empty
+    , let ns = neighborhood4 (x, y) grid
+    , let friends = filter (== Captured pid) ns
+    , let foes = filter (`notElem` [Empty, Captured pid]) ns
+    , length friends > length foes
+    ]

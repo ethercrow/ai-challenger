@@ -160,7 +160,7 @@ class Game game where
     gameTimeout :: GameState game -> GameResult game
     gameExtractReplay :: game -> GameState game -> GameReplay game
     gameSaveReplay :: game -> Path Abs File -> GameReplay game -> IO ()
-    gameSendWorld :: game -> GameState game -> (T.Text -> IO (Either Fault ())) -> IO ()
+    gameSendWorld :: game -> PlayerId -> GameState game -> (T.Text -> IO (Either Fault ())) -> IO ()
 
 instance Monoid Turn where
     mempty = Turn 0

@@ -73,7 +73,7 @@ instance Game RPS where
                 TL.pack (unwords [show c1, show c2, show o1, show o2])
         withFile filepath WriteMode $ \h -> 
             mapM_ (TLIO.hPutStrLn h . formatTurn) turns
-    gameSendWorld _ _state _sendLine = return ()
+    gameSendWorld _ _pid _state _sendLine = return ()
 
 validateOrders :: V.Vector (PlayerId, V.Vector Order)
     -> Either Faults (Order, Order)
