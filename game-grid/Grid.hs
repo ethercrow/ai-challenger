@@ -8,6 +8,9 @@ module Grid
     ( game
     ) where
 
+import Control.Monad
+import Control.Monad.ST
+import Data.Function
 import Data.Maybe
 import Data.Monoid
 import qualified Data.List.NonEmpty as NE
@@ -16,9 +19,10 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector.Extended as V
+import qualified Data.Vector.Mutable as VM
 import Path
 import System.IO
-import Text.Read
+import Text.Read (readMaybe)
 
 import AIChallenger.Types
 
@@ -88,6 +92,8 @@ instance Game GridGame where
                 in Left (GameResult winners (Disqualification faults) oldReplay)
             Right (os1, os2) ->
                 let newGrid = oldGrid
+                        & suffocate
+                        & applyOrders (os1, os2)
                 in Right (newGrid, oldReplay <> Replay (pure (newGrid, os1, os2)))
     gameExtractReplay _ (_state, replay) = replay
     gameSaveReplay _ path (Replay turns) = do
@@ -142,3 +148,41 @@ validateOrders rawOrders =
                 Just (pure (Fault ("Coord " <> showT i <> " is out of bounds.")))
             check _ = Nothing
         in check x S.<> check y
+
+suffocate :: Grid -> Grid
+suffocate grid@(Grid g) =
+    let surroundedPoints =
+            [ (x, y)
+            | x <- [0 .. gridSize - 1]
+            , y <- [0 .. gridSize - 1]
+            , null [() | Empty <- neighborhood8 (x, y) grid]
+            ]
+        killSurrounded :: VM.MVector s (V.Vector Tile) -> ST s ()
+        killSurrounded mgrid =
+            forM_ surroundedPoints $ \(x, y) -> do
+                row <- VM.read mgrid y
+                VM.write mgrid y (row V.// pure (x, Empty))
+    in Grid $ V.modify killSurrounded g
+
+neighborhood8 :: Point -> Grid -> [Tile]
+neighborhood8 (x, y) (Grid grid0) =
+    let neighborPoints =
+            [ (x + dx, y + dy)
+            | dx <- [-1, 0, 1]
+            , dy <- [-1, 0, 1]
+            , (dx, dy) /= (0, 0)
+            ]
+        get (i, j) = (grid0 V.!? j) >>= (V.!? i)
+    in mapMaybe get neighborPoints
+
+applyOrders :: (V.Vector Order, V.Vector Order) -> Grid -> Grid
+applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
+    where
+    go :: VM.MVector s (V.Vector Tile) -> ST s ()
+    go mgrid = do
+        V.forM_ os1 $ \(Capture (x, y)) -> do
+            row <- VM.read mgrid y
+            VM.write mgrid y (row V.// pure (x, Captured (PlayerId 1)))
+        V.forM_ os2 $ \(Capture (x, y)) -> do
+            row <- VM.read mgrid y
+            VM.write mgrid y (row V.// pure (x, Captured (PlayerId 2)))
