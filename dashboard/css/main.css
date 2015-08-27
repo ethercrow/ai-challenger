@@ -1,0 +1,103 @@
+/* ========== General document style ========== */
+body {
+    font-family      : monospace;
+    
+    color            : #393;
+    background-color : black;
+}
+
+/* ============ Page header styles ============ */
+#header {
+    position         : absolute;
+    top              : 0;
+    left             : 0;
+    width            : 100vw;
+    height           : 4rem;
+    
+    background-color : #030;
+    
+    border-bottom    : .1rem solid;
+}
+
+#main_title {
+    font-size   : 200%;
+    
+    margin-top  : 1rem;
+    margin-left : .5rem;
+}
+
+/* =============== Ladder styles =============== */
+#left_column {
+    position     : absolute;
+    top          : 4rem;
+    left         : 0;
+    width        : 15rem;
+    height       : calc(100vh - 4rem);
+    
+    overflow-y   : auto;
+    
+    border-right : .1rem solid;
+}
+
+#ladder {
+    font-size  : 120%;
+    
+    margin-top  : .5rem;
+    margin-left : .3rem;
+}
+
+#ladder > caption {
+    font-size        : 120%;
+    font-weight      : normal;
+    
+    text-align       : center;
+}
+
+#ladder th {
+    font-weight     : normal;
+    
+    text-align      : left;
+    text-decoration : underline;
+    
+    padding-left    : .3rem;
+    
+    border-right    : .1rem solid;
+}
+#ladder th:last-child {
+    border-right : none;
+}
+
+#ladder td {
+    padding-left  : .3rem;
+    padding-right : .3rem;
+    
+    border-right  : .1rem solid;
+}
+#ladder td:last-child {
+    border-right : none;
+}
+
+#ladder tbody > tr:hover {
+    background-color : #030;
+}
+
+/* ============== Console styles =============== */
+#console {
+    position    : absolute;
+    top         : 4rem;
+    left        : 15rem;
+    width       : calc(100vw - 15rem);
+    height      : calc(100vh - 4rem);
+    
+    overflow-y  : scroll;
+}
+
+#console > p {
+    margin-top    : 0;
+    margin-bottom : 0;
+    padding-left  : .5rem;
+}
+
+#console > p:first-child {
+    margin-top : .5em;
+}
