@@ -83,7 +83,7 @@ instance Game GridGame where
             return (Capture (x, y))
         _ -> Nothing
     gameAdvance rawOrders (oldGrid, oldReplay) =
-        case validateOrders rawOrders of
+        case validateOrders rawOrders oldGrid of
             Left faults ->
                 let winners =
                         V.filter
@@ -134,9 +134,9 @@ formatGrid (Grid grid) =
         tileToChar (Captured (PlayerId _)) = '?'
     in TL.intercalate "\n" (V.toList (fmap (TL.pack . V.toList) charGrid))
 
-validateOrders :: V.Vector (PlayerId, V.Vector Order)
+validateOrders :: V.Vector (PlayerId, V.Vector Order) -> Grid
     -> Either Faults (V.Vector Order, V.Vector Order)
-validateOrders rawOrders =
+validateOrders rawOrders grid =
     if V.null faults
     then
         let [a, b] = V.toList (fmap snd rawOrders)
@@ -145,15 +145,27 @@ validateOrders rawOrders =
     where
     faults = V.mapMaybe go rawOrders
     go :: (PlayerId, V.Vector Order) -> Maybe (PlayerId, NE.NonEmpty Fault)
-    go (p, os) =  case fmap validateOrder os of
-        (V.all isNothing -> True) -> Nothing
+    go (p, os) = case fmap (validateOrder p) os of
+        (V.all isNothing -> True) ->
+            let Energy e = energyBudget grid p
+            in if V.length os <= e
+                then Just (p, pure (Fault (showT e <> " energy is not enough for " <> showT (V.length os) <> " orders")))
+                else Nothing
         xs -> Just (p, foldr1 (S.<>) (V.catMaybes xs))
-    validateOrder :: Order -> Maybe (NE.NonEmpty Fault)
-    validateOrder (Capture (x, y)) =
-        let check i | i >= gridSize || i < 0 =
+    validateOrder :: PlayerId -> Order -> Maybe (NE.NonEmpty Fault)
+    validateOrder pid (Capture (x, y)) =
+        let checkBound i | i >= gridSize || i < 0 =
                 Just (pure (Fault ("Coord " <> showT i <> " is out of bounds.")))
-            check _ = Nothing
-        in check x S.<> check y
+            checkBound _ = Nothing
+            checkReachability =
+                if Captured pid `elem` neighborhood4 (x, y) grid
+                then Nothing
+                else Just (pure (Fault ("Tile " <> showT (x, y) <> " is not reachable for " <> showT pid)))
+        in foldr1 (S.<>)
+            [ checkBound x
+            , checkBound y
+            , checkReachability
+            ]
 
 suffocate :: Grid -> Grid
 suffocate grid@(Grid g) =
