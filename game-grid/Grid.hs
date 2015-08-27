@@ -82,6 +82,15 @@ instance Game GridGame where
             y <- readMaybe (T.unpack ty)
             return (Capture (x, y))
         _ -> Nothing
+    gameAdvance _ (oldGrid, oldReplay)
+        | Score 0 0 <- gridScore oldGrid
+        = Left (GameResult mempty Elimination oldReplay)
+    gameAdvance _ (oldGrid, oldReplay)
+        | Score _ 0 <- gridScore oldGrid
+        = Left (GameResult (pure (PlayerId 1)) Elimination oldReplay)
+    gameAdvance _ (oldGrid, oldReplay)
+        | Score 0 _ <- gridScore oldGrid
+        = Left (GameResult (pure (PlayerId 2)) Elimination oldReplay)
     gameAdvance rawOrders (oldGrid, oldReplay) =
         case validateOrders rawOrders oldGrid of
             Left faults ->
@@ -128,9 +137,9 @@ instance Game GridGame where
 formatGrid :: Grid -> TL.Text
 formatGrid (Grid grid) =
     let charGrid = fmap (fmap tileToChar) grid
-        tileToChar Empty = '.'
-        tileToChar (Captured (PlayerId 1)) = 'X'
-        tileToChar (Captured (PlayerId 2)) = 'O'
+        tileToChar Empty = '-'
+        tileToChar (Captured (PlayerId 1)) = '1'
+        tileToChar (Captured (PlayerId 2)) = '2'
         tileToChar (Captured (PlayerId _)) = '?'
     in TL.intercalate "\n" (V.toList (fmap (TL.pack . V.toList) charGrid))
 
@@ -148,7 +157,7 @@ validateOrders rawOrders grid =
     go (p, os) = case fmap (validateOrder p) os of
         (V.all isNothing -> True) ->
             let Energy e = energyBudget grid p
-            in if V.length os <= e
+            in if V.length os > e
                 then Just (p, pure (Fault (showT e <> " energy is not enough for " <> showT (V.length os) <> " orders")))
                 else Nothing
         xs -> Just (p, foldr1 (S.<>) (V.catMaybes xs))
