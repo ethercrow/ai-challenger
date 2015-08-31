@@ -1,8 +1,6 @@
 /* Vintage terminal effect styling */
 
 .cursor {
-    margin-left       : .5rem;
-    
     box-sizing        : border-box;
     border-left       : .5em solid;
     
