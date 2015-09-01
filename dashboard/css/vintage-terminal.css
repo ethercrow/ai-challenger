@@ -16,6 +16,7 @@
     height            : 99vh;
     
     z-index           : 4010;
+    pointer-events    : none;
     
     background        : linear-gradient(#888 50%, #000 50%);
     background-size   : 100% 4px;

@@ -1,9 +1,13 @@
 import React from 'react';
 
 class ConsoleCurrentLine extends React.Component {
+    componentDidUpdate() {
+        React.findDOMNode(this).scrollIntoView();
+    }
+    
     render() {
         return (
-            <p>{this.props.prompt}{this.props.children}<span className="cursor"></span></p>
+            <pre>{this.props.prompt}{this.props.string}<span className="cursor"></span></pre>
         );
     }
 };

@@ -3,7 +3,7 @@ import React from 'react';
 class ConsoleLogLine extends React.Component {
     render() {
         return (
-            <p>{this.props.children}</p>
+            <pre>{this.props.string}</pre>
         );
     }
 };

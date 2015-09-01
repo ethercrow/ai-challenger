@@ -92,12 +92,12 @@ body {
     overflow-y  : scroll;
 }
 
-#console > p {
+#console > pre {
     margin-top    : 0;
     margin-bottom : 0;
     padding-left  : .5rem;
 }
 
-#console > p:first-child {
+#console > pre:first-child {
     margin-top : .5em;
 }
