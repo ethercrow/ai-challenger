@@ -16,6 +16,7 @@ import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Vector.Extended as V
 import Path
+import System.Timeout
 
 import AIChallenger.Bot
 import AIChallenger.Types
@@ -72,10 +73,12 @@ getOrders :: forall game. Game game => game -> V.Vector Player
 getOrders game bots = do
     unparsedOrdersAndFaults <- forM bots $ \(Player {playerId = me, playerOutput = ch}) ->
         do
-            faultOrTexts <- chReadLinesUntilDot ch
-            case faultOrTexts of
-                Left fault -> return (me, Left (pure fault))
-                Right texts -> return (me, Right texts)
+            let oneSecond = 1000000
+            maybeFaultOrTexts <- timeout oneSecond (chReadLinesUntilDot ch)
+            case maybeFaultOrTexts of
+                Nothing -> return (me, Left (pure (Fault "Time limit exceeded")))
+                Just (Left fault) -> return (me, Left (pure fault))
+                Just (Right texts) -> return (me, Right texts)
     let ioFaults :: V.Vector (PlayerId, NonEmpty Fault)
         ioFaults =
             V.mapMaybe
