@@ -22,6 +22,7 @@ class Console extends React.Component {
     
     componentWillUnmount() {
         ConsoleStore.off(this._onChange);
+        document.removeEventListener('keypress', this._onKeyPress);
         document.removeEventListener('keydown', this._onKeyDown);
     }
     

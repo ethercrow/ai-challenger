@@ -8,11 +8,12 @@ const APP_CHANGE_EVENT = 'app_change';
 const initialData = {
     bots: ['randy', 'rocky', 'scarlett', 'pepper'],
     matches: [
-        {bot1: 0, bot2: 1, winner: 2},
-        {bot1: 0, bot2: 2, winner: 1},
-        {bot1: 0, bot2: 3, winner: 2},
-        {bot1: 1, bot2: 2, winner: 1},
-        {bot1: 2, bot2: 3, winner: 1}
+        {contesters: [0, 1], winner: 1},
+        {contesters: [0, 2], winner: 0},
+        {contesters: [0, 3], winner: 1},
+        {contesters: [1, 2], winner: 0},
+        {contesters: [1, 3], winner: 1},
+        {contesters: [2, 3], winner: 0}
     ]
 };
 let data = initialData;
@@ -64,13 +65,25 @@ class AppStore extends EventEmitter {
             });
         }
     }
+    
+    getBots() {
+        return data.bots;
+    }
+    
+    getBotNumVictories(bot_index) {
+        return data.matches.reduce((num_victories, match) => {
+            return num_victories + ((match.contesters[match.winner] == bot_index)?1:0);
+        }, 0);
+    }
+    
+    getBotNumDefeats(bot_index) {
+        return data.matches.reduce((num_defeats, match) => {
+            if((match.contesters[0] == bot_index) || (match.contesters[1] == bot_index)) {
+                return num_defeats + ((match.contesters[match.winner] != bot_index)?1:0);
+            } else return num_defeats;
+        }, 0);
+    }
 };
 
 var _AppStore = new AppStore();
 export default _AppStore;
-
-_AppStore.dispatchToken = Dispatcher.register((action) => {
-    switch(action.type) {    
-    default:
-    }
-});
