@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import ActionTypes from '../constants/ActionTypes';
 import Dispatcher from '../dispatcher/AppDispatcher';
+import AppStore from './AppStore';
 
 const CONSOLE_CHANGE_EVENT = 'console_change';
 
@@ -38,7 +39,17 @@ class ConsoleStore extends EventEmitter {
     
     executeCurrentLine() {
         data.history.push(data.prompt + data.current_line);
+        
+        let tokens = data.current_line.split(/\s\s*/);
+        let command = tokens[0];
+        tokens.shift();
+        AppStore.executeCommand(command, tokens);
+        
         data.current_line = '';
+    }
+    
+    writeLine(str) {
+        data.history.push(str);
     }
     
     getHistory() {
@@ -71,6 +82,11 @@ _ConsoleStore.dispatchToken = Dispatcher.register((action) => {
     
     case ActionTypes.CONSOLE_ENTER_TYPED:
         _ConsoleStore.executeCurrentLine();
+        _ConsoleStore.emitChange();
+        break;
+    
+    case ActionTypes.CONSOLE_WRITE_LINE:
+        _ConsoleStore.writeLine(action.data);
         _ConsoleStore.emitChange();
         break;
     

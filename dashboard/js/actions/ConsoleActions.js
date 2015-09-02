@@ -1,4 +1,3 @@
-import ConsoleStore from '../stores/ConsoleStore';
 import Constants from '../constants/ActionTypes';
 import Dispatcher from '../dispatcher/AppDispatcher';
 
@@ -16,5 +15,12 @@ export default {
     
     consoleEnterTyped() {
         Dispatcher.dispatch({ type: Constants.CONSOLE_ENTER_TYPED });
+    },
+    
+    writeLine(str) {
+        Dispatcher.dispatch({ 
+            type: Constants.CONSOLE_WRITE_LINE,
+            data: str
+        });
     }
 };
