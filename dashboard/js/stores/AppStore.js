@@ -3,19 +3,10 @@ import ActionTypes from '../constants/ActionTypes';
 import Dispatcher from '../dispatcher/AppDispatcher';
 import ConsoleStore from './ConsoleStore';
 
+import initialData from '../constants/AppStoreInitialData';
+
 const APP_CHANGE_EVENT = 'app_change';
 
-const initialData = {
-    bots: ['randy', 'rocky', 'scarlett', 'pepper'],
-    matches: [
-        {contesters: [0, 1], winner: 1},
-        {contesters: [0, 2], winner: 0},
-        {contesters: [0, 3], winner: 1},
-        {contesters: [1, 2], winner: 0},
-        {contesters: [1, 3], winner: 1},
-        {contesters: [2, 3], winner: 0}
-    ]
-};
 let data = initialData;
 
 class AppStore extends EventEmitter {
@@ -39,6 +30,14 @@ class AppStore extends EventEmitter {
         
         case 'list':
             this.executeList(args);
+            break;
+        
+        case 'show':
+            this.executeShow(args);
+            break;
+        
+        case 'table':
+            this.executeTable(args);
             break;
         
         default:
@@ -66,6 +65,140 @@ class AppStore extends EventEmitter {
         }
     }
     
+    executeTable(args) {
+        if(args.length != 0) {
+            ConsoleStore.writeLine("ERROR: The command 'table' takes no argument.");
+        } else {
+            const match_table = this.getMatchTable();
+            
+            // Computing column width
+            const column_width = data.bots.reduce((max_length, bot_name) => {
+                if(bot_name.length > max_length) {
+                    return bot_name.length;
+                } else {
+                    return max_length;
+                }
+            }, 0) + 2;
+            
+            // Printing table header
+            let str = '';
+            for(let i = 0; i < column_width; i++) str += ' ';
+            data.bots.forEach((bot_name) => {
+                str += '| ';
+                str += bot_name;
+                for(let i = column_width - 2 - bot_name.length; i >= 0; i--) {
+                    str += ' ';
+                }
+            });
+            ConsoleStore.writeLine(str);
+            
+            // Printing separator
+            str = '';
+            for(let i = 0; i < column_width; i++) {
+                str += '-'
+            }
+            for(let i = 0; i < data.bots.length; i++) {
+                str += '|';
+                for(let j = 0; j < column_width; j++) {
+                    str += '-';
+                }
+            }
+            ConsoleStore.writeLine(str);
+            
+            // Printing lines
+            data.bots.forEach((bot_name, bot_index) => {
+                str = ' ';
+                str += bot_name;
+                for(let i = column_width - 2 - bot_name.length; i >= 0; i--) {
+                    str += ' ';
+                }
+                
+                for(let i = 0; i < data.bots.length; i++) {
+                    str += '| ';
+                    str += (match_table[bot_index][i] == undefined)?' ':match_table[bot_index][i];
+                    for(let j = column_width - 3; j >= 0; j--) {
+                        str += ' ';
+                    }
+                }
+                
+                ConsoleStore.writeLine(str);
+            });
+        }
+    }
+    
+    executeShowWith1Arg(bot_name) {
+        const bot_index = data.bots.indexOf(bot_name);
+        if(bot_index == -1) {
+            ConsoleStore.writeLine("ERROR: The bot '" + bot_name + "' doesn't exist!");
+        }
+        
+        ConsoleStore.writeLine("The bot " + bot_name + " won " + this.getBotNumVictories(bot_index) 
+        + " times and lost " + this.getBotNumDefeats(bot_index) + " times.");
+        
+        let won_against = new Array();
+        let lost_against = new Array();
+        data.matches.forEach((match) => {
+            if(match.contesters[0] == bot_index) {
+                if(match.winner == 0) won_against.push(data.bots[match.contesters[1]]);
+                else lost_against.push(data.bots[match.contesters[1]]);
+            } else {
+                if(match.contesters[1] == bot_index) {
+                    if(match.winner == 1) won_against.push(data.bots[match.contesters[0]]);
+                    else lost_against.push(data.bots[match.contesters[0]]);
+                }
+            }
+        });
+        
+        ConsoleStore.writeLine("Won against: " + won_against.reduce((str, name) => {
+            return str + name + ', ';
+        }, ""));
+        ConsoleStore.writeLine("Lost against: " + lost_against.reduce((str, name) => {
+            return str + name + ', ';
+        }, ""));
+    }
+    
+    executeShowWith2Args(bot_name1, bot_name2) {
+        const bot_index1 = data.bots.indexOf(bot_name1);
+        const bot_index2 = data.bots.indexOf(bot_name2);
+        if(bot_index1 == -1) {
+            ConsoleStore.writeLine("ERROR: The bot '" + bot_name1 + "' doesn't exist!");
+        }
+        if(bot_index2 == -1) {
+            ConsoleStore.writeLine("ERROR: The bot '" + bot_name2 + "' doesn't exist!");
+        }
+        
+        const match = data.matches.find((match) => {
+            if(match.contesters[0] == bot_index1 && match.contesters[1] == bot_index2) {
+                return true;
+            } else {
+                if(match.contesters[0] == bot_index2 && match.contesters[1] == bot_index1) {
+                    return true;
+                } 
+            }
+        });
+        if(match == undefined) {
+            ConsoleStore.writeLine("ERROR: The match between '" + bot_name1 + "' and '" + bot_name2 + "' wasn't found.");
+        }
+        
+        ConsoleStore.writeLine("Match " + data.bots[match.contesters[0]] + " vs. " + data.bots[match.contesters[1]] + " log:");
+        ConsoleStore.writeLine(match.log);
+    }
+    
+    executeShow(args) {
+        switch(args.length) {
+        case 1:
+            this.executeShowWith1Arg(args[0]);
+            break;
+        
+        case 2:
+            this.executeShowWith2Args(args[0], args[1]);
+            break;
+        
+        default:
+            ConsoleStore.writeLine("ERROR: The command 'show' accept one or two arguments.");
+        }
+    }
+    
     getBots() {
         return data.bots;
     }
@@ -82,6 +215,20 @@ class AppStore extends EventEmitter {
                 return num_defeats + ((match.contesters[match.winner] != bot_index)?1:0);
             } else return num_defeats;
         }, 0);
+    }
+    
+    getMatchTable() {
+        let match_table = new Array();
+        for(let i = 0; i < data.bots.length; i++) {
+            match_table.push(new Array(data.bots.length));
+        }
+        
+        data.matches.forEach((match) => {
+            match_table[match.contesters[0]][match.contesters[1]] = (match.winner == 0)?'W':'L';
+            match_table[match.contesters[1]][match.contesters[0]] = (match.winner == 1)?'W':'L';
+        });
+        
+        return match_table;
     }
 };
 
