@@ -22,6 +22,11 @@ class AppStore extends EventEmitter {
         this.removeListener(APP_CHANGE_EVENT, callback);
     }
     
+    displayMatchWindow() {
+        data.display_match_window = true;
+        this.emitChange();
+    }
+    
     executeCommand(command, args) {
         switch(command) {
         case 'help':
@@ -180,8 +185,9 @@ class AppStore extends EventEmitter {
             ConsoleStore.writeLine("ERROR: The match between '" + bot_name1 + "' and '" + bot_name2 + "' wasn't found.");
         }
         
-        ConsoleStore.writeLine("Match " + data.bots[match.contesters[0]] + " vs. " + data.bots[match.contesters[1]] + " log:");
-        ConsoleStore.writeLine(match.log);
+        this.displayMatchWindow();
+        /* ConsoleStore.writeLine("Match " + data.bots[match.contesters[0]] + " vs. " + data.bots[match.contesters[1]] + " log:");
+        ConsoleStore.writeLine(match.log); */
     }
     
     executeShow(args) {
@@ -197,6 +203,10 @@ class AppStore extends EventEmitter {
         default:
             ConsoleStore.writeLine("ERROR: The command 'show' accept one or two arguments.");
         }
+    }
+    
+    getDisplayMatchWindow() {
+        return data.display_match_window;
     }
     
     getBots() {

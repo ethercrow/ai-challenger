@@ -1,4 +1,6 @@
 const initialData = {
+    display_match_window: false,
+    
     bots: ['randy', 'rocky', 'scarlett', 'pepper'],
     matches: [
         {

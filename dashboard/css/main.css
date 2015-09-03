@@ -101,3 +101,110 @@ body {
 #console > pre:first-child {
     margin-top : .5em;
 }
+
+/* =========== Match viewer styles ============= */
+.console-window {
+    position          : absolute;
+    top               : 10vh;
+    left              : 10vw;
+    width             : 80vw;
+    height            : 80vh;
+    
+    background-color  : black;
+    
+    border-color      : #393;
+    border-width      : .2rem;
+    border-style      : solid;
+}
+
+.console-window.console-window-enter {
+    top    : 45vh; 
+    left   : 45vw; 
+    width  : 10vw; 
+    height : 10vh;
+}
+
+.console-window-enter.console-window-enter-active {
+    animation         : open-win 1s linear;
+    -webkit-animation : open-win 1s linear;
+    -moz-animation    : open-win 1s linear;
+    -o-animation      : open-win 1s linear;
+}
+
+@keyframes open-win {
+    0%   { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+    25%  { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    50%  { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%  { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    100% { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+}
+
+@-webkit-keyframes open-win {
+    0%   { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+    25%  { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    50%  { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%  { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    100% { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+}
+
+@-moz-keyframes open-win {
+    0%   { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+    25%  { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    50%  { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%  { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    100% { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+}
+
+@-o-keyframes open-win {
+    0%   { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+    25%  { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    50%  { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%  { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    100% { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+}
+
+.console-window.console-window-leave {
+    top               : 10vh;
+    left              : 10vw;
+    width             : 80vw;
+    height            : 80vh;
+}
+
+.console-window-leave.console-window-leave-active {
+    animation         : close-win 1s linear;
+    -webkit-animation : close-win 1s linear;
+    -moz-animation    : close-win 1s linear;
+    -o-animation      : close-win 1s linear;
+}
+
+@keyframes close-win {
+    0%    { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+    25%   { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    50%   { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%   { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    1000% { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+}
+
+@-webkit-keyframes close-win {
+    0%    { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+    25%   { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    50%   { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%   { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    1000% { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+}
+
+@-moz-keyframes close-win {
+    0%    { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+    25%   { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    50%   { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%   { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    1000% { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+}
+
+@-o-keyframes close-win {
+    0%    { top : 10vh; left : 10vw; width : 80vw; height : 80vh; }
+    25%   { top : 20vh; left : 20vw; width : 60vw; height : 60vh; }
+    50%   { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
+    75%   { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
+    1000% { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+}
