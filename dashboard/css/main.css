@@ -110,6 +110,8 @@ body {
     width             : 80vw;
     height            : 80vh;
     
+    z-index           : 3000;
+    
     background-color  : black;
     
     border-color      : #393;
@@ -164,10 +166,10 @@ body {
 }
 
 .console-window.console-window-leave {
-    top               : 10vh;
-    left              : 10vw;
-    width             : 80vw;
-    height            : 80vh;
+    top    : 45vh; 
+    left   : 45vw; 
+    width  : 10vw; 
+    height : 10vh;
 }
 
 .console-window-leave.console-window-leave-active {
@@ -207,4 +209,43 @@ body {
     50%   { top : 30vh; left : 30vw; width : 40vw; height : 40vh; }
     75%   { top : 40vh; left : 40vw; width : 20vw; height : 20vh; }
     1000% { top : 45vh; left : 45vw; width : 10vw; height : 10vh; }
+}
+
+.console-window-header {
+    position            : absolute;
+    top                 : 0;
+    left                : 0;
+    right               : 0;
+    height              : 1.1rem;
+    
+    background-color    : #030;
+    
+    border-bottom-color : #393;
+    border-bottom-width : .1rem;
+    border-bottom-style : solid;
+    
+    font-size           : 120%;
+    font-style          : italic;
+    
+    text-align          : center;
+}
+
+.console-window-close-button {
+    position            : absolute;
+    top                 : 0;
+    right               : 0;
+    width               : 1rem;
+    height              : 1.1rem;
+    
+    background-color    : black;
+    
+    border-left-color   : #393;
+    border-left-width   : .1rem;
+    border-left-style   : solid;
+    
+    text-align          : center;
+}
+
+.console-window-close-button:hover {
+    font-size : 120%;
 }

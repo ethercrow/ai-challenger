@@ -22,9 +22,13 @@ class AppStore extends EventEmitter {
         this.removeListener(APP_CHANGE_EVENT, callback);
     }
     
-    displayMatchWindow() {
-        data.display_match_window = true;
+    displayMatchWindow(match) {
+        data.display_match = match;
         this.emitChange();
+    }
+    
+    closeMatchWindow() {
+        data.display_match = undefined;
     }
     
     executeCommand(command, args) {
@@ -185,9 +189,7 @@ class AppStore extends EventEmitter {
             ConsoleStore.writeLine("ERROR: The match between '" + bot_name1 + "' and '" + bot_name2 + "' wasn't found.");
         }
         
-        this.displayMatchWindow();
-        /* ConsoleStore.writeLine("Match " + data.bots[match.contesters[0]] + " vs. " + data.bots[match.contesters[1]] + " log:");
-        ConsoleStore.writeLine(match.log); */
+        this.displayMatchWindow(match);
     }
     
     executeShow(args) {
@@ -206,7 +208,11 @@ class AppStore extends EventEmitter {
     }
     
     getDisplayMatchWindow() {
-        return data.display_match_window;
+        return data.display_match != undefined;
+    }
+    
+    getMatchWindowMatch() {
+        return data.display_match;
     }
     
     getBots() {
@@ -244,3 +250,14 @@ class AppStore extends EventEmitter {
 
 var _AppStore = new AppStore();
 export default _AppStore;
+
+_AppStore.dispatchToken = Dispatcher.register((action) => {
+    switch(action.type) {
+    case ActionTypes.APP_CLOSE_MATCH_WINDOW:
+        _AppStore.closeMatchWindow();
+        _AppStore.emitChange();
+        break;
+    
+    default:
+    }
+});

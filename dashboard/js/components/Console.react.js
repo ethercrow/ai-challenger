@@ -1,5 +1,7 @@
 import React from 'react';
 
+import AppStore from '../stores/AppStore';
+
 import ConsoleStore from '../stores/ConsoleStore';
 import ConsoleActions from '../actions/ConsoleActions';
 
@@ -15,15 +17,13 @@ class Console extends React.Component {
     }
     
     componentDidMount() {
+        AppStore.onChange(this._onChange);
         ConsoleStore.onChange(this._onChange);
-        document.addEventListener('keypress', this._onKeyPress);
-        document.addEventListener('keydown', this._onKeyDown);
     }
     
     componentWillUnmount() {
+        AppStore.off(this._onChange);
         ConsoleStore.off(this._onChange);
-        document.removeEventListener('keypress', this._onKeyPress);
-        document.removeEventListener('keydown', this._onKeyDown);
     }
     
     render() {
@@ -82,6 +82,14 @@ class Console extends React.Component {
     }
     
     _resolveState() {
+        if(AppStore.getDisplayMatchWindow()) {
+            document.removeEventListener('keypress', this._onKeyPress);
+            document.removeEventListener('keydown', this._onKeyDown);
+        } else {
+            document.addEventListener('keypress', this._onKeyPress);
+            document.addEventListener('keydown', this._onKeyDown);
+        }
+        
         return {
             history: ConsoleStore.getHistory(),
             prompt: ConsoleStore.getPrompt(),
