@@ -1,10 +1,14 @@
 const initialData = {
     canvas: undefined,
     animation_timer: undefined,
+    advance_timer: undefined,
     
     match: undefined,
     bot1_name: '',
-    bot2_name: ''
+    bot2_name: '',
+    
+    turns: [],
+    current_turn: 0
 };
 
 const images_ids = {
@@ -26,15 +30,25 @@ class DrawMatch {
         this.data.match = match;
         this.data.bot1_name = bot1_name;
         this.data.bot2_name = bot2_name;
+        
+        this._generateTurns();
     }
     
     start() {
         this._startLoadingImages();
         this.data.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
+        this.data.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
     }
     
     stop() {
+        window.clearInterval(this.data.advance_timer);
         window.clearInterval(this.data.animation_timer);
+    }
+    
+    _advanceTurn() {
+        if(this.data.current_turn < this.data.turns.length) {
+            this.data.current_turn += 1;
+        }
     }
     
     _drawFrame() {
@@ -66,8 +80,62 @@ class DrawMatch {
     }
     
     _drawNormalFrame(context) {
+        const turn = this._getTurn(this.data.current_turn);
+        
         context.fillStyle = "green";
-        context.fillRect(10, 10, 100, 100);
+        context.font = '48px monospace';
+        context.textAlign = 'start';
+        context.textBaseline = 'middle';
+        
+        this._drawTextBox(context, this.data.bot1_name, 125, 100, 150, 100);
+        this._drawMoveImage(context, turn.moves[0], 125, 200);
+        this._drawTextBox(context, turn.scores[0], 125, 400, 150, 100);
+        
+        this._drawTextBox(context, this.data.bot2_name, 525, 100, 150, 100);
+        this._drawMoveImage(context, turn.moves[1], 525, 200);
+        this._drawTextBox(context, turn.scores[1], 525, 400, 150, 100);
+    }
+    
+    _drawMoveImage(context, move, x, y) {
+        switch(move) {
+        case 'R':
+            context.drawImage(image_resources.images[images_ids.ROCK_IMAGE], x, y);
+            break;
+        
+        case 'P':
+            context.drawImage(image_resources.images[images_ids.PAPER_IMAGE], x, y);
+            break;
+        
+        case 'S':
+            context.drawImage(image_resources.images[images_ids.SCISSORS_IMAGE], x, y);
+            break;
+        
+        default:
+            console.error('Invalid move!');
+        }
+    }
+    
+    _drawTextBox(context, text, x, y, width, height) {
+        context.fillStyle = "green";
+        context.font = '48px monospace';
+        context.textAlign = 'start';
+        context.textBaseline = 'middle';
+        
+        const text_data = context.measureText(text);
+        context.fillText(text, x + (width - text_data.width)/2, y + height/2, text_data.width);
+    }
+    
+    _generateTurns() {
+        this.data.turns = this.data.match.log.split('\n');
+    }
+    
+    _getTurn(n) {
+        let turn_components = this.data.turns[n].split(' ');
+        
+        return {
+            scores: [Number.parseInt(turn_components[0]), Number.parseInt(turn_components[1])],
+            moves: [turn_components[2], turn_components[3]]
+        };
     }
     
     _areImagesLoaded() {
