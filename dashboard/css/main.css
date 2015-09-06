@@ -249,3 +249,11 @@ body {
 .console-window-close-button:hover {
     font-size : 120%;
 }
+
+#match-view {
+    position : absolute;
+    top      : 1.2rem;
+    left     : 0;
+    width    : 100%;
+    height   : calc(100% - 1.2rem);
+}
