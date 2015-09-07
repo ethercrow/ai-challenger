@@ -1,4 +1,6 @@
 import React from 'react';
+import ControlPanelActions from '../actions/ControlPanelActions';
+import ControlPanelStore from '../stores/ControlPanelStore';
 
 const images_ids = {
     ROCK_IMAGE: 0,
@@ -21,37 +23,64 @@ class RPSView extends React.Component {
         
         this.turns = [];
         this.current_turn = 0;
+        this.reset_store = false;
+        
+        this.state = this._resolveState();
+        this._onChange = this._onChange.bind(this);
     }
     
     componentDidMount() {
         this.canvas = document.getElementById('match-view');
         this._generateTurns();
+        this.reset_store = true;
         
         this._startLoadingImages();
         this.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
-        this.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
+        
+        ControlPanelStore.onChange(this._onChange);
+        document.addEventListener('keyup', this._onKeyUp.bind(this));
     }
     
     componentWillUnmount() {
-        window.clearInterval(this.advance_timer);
+        ControlPanelStore.off(this._onChange);
+        
+        if(this.advance_timer) {
+            window.clearInterval(this.advance_timer);
+        }
         window.clearInterval(this.animation_timer);
+        document.removeEventListener('keyup', this._onKeyUp.bind(this));
     }
     
     render() {
         return (
-            <canvas id="match-view" width="800" height="600">
+            <canvas id="match-view" width="800" height="550">
                 Sorry, you browser doesn&#39;t support HTML5 canvas API!
             </canvas>
         );
     }
     
+    _startPlaying() {
+        this.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
+    }
+    
+    _stopPlaying() {
+        window.clearInterval(this.advance_timer);
+        this.advance_timer = undefined;
+    }
+    
     _advanceTurn() {
         if(this.current_turn < this.turns.length - 1) {
             this.current_turn += 1;
+            ControlPanelActions.changeTurn(this.current_turn);
         }
     }
     
     _drawFrame() {
+        if(this.reset_store) {
+            ControlPanelActions.reset(this.turns.length);
+            this.reset_store = false;
+        }
+        
         let context = this.canvas.getContext("2d");
         context.clearRect(0, 0, 800, 600);
         
@@ -167,6 +196,52 @@ class RPSView extends React.Component {
             });
             image_resources.images[image_id].src = image_url;
         }
+    }
+    
+    _onKeyUp(event) {
+        switch(event.keyCode) {
+        case 32:
+            // Space pressed
+            if(this.state.playing) {
+                ControlPanelActions.stopPlaying();
+            } else {
+                ControlPanelActions.startPlaying();
+            }
+            break;
+        
+        case 39:
+            // Left arrow
+            ControlPanelActions.changeTurn(this.current_turn + 1);
+            break;
+        
+        case 37:
+            // Right arrow
+            ControlPanelActions.changeTurn(this.current_turn - 1);
+            break;
+        
+        default:
+        }
+    }
+    
+    _resolveState() {
+        return {
+            playing: ControlPanelStore.isPlaying()
+        };
+    }
+    
+    _onChange() {
+        let new_state = this._resolveState();
+        
+        if(this.state.playing != new_state.playing) {
+            if(new_state.playing) {
+                this._startPlaying();
+            } else {
+                this._stopPlaying();
+            }
+        }
+        
+        this.setState(this._resolveState());
+        this.current_turn = ControlPanelStore.getCurrentTurn();
     }
 };
 

@@ -171,9 +171,11 @@ class AppStore extends EventEmitter {
         const bot_index2 = data.bots.indexOf(bot_name2);
         if(bot_index1 == -1) {
             ConsoleStore.writeLine("ERROR: The bot '" + bot_name1 + "' doesn't exist!");
+            return;
         }
         if(bot_index2 == -1) {
             ConsoleStore.writeLine("ERROR: The bot '" + bot_name2 + "' doesn't exist!");
+            return;
         }
         
         const match = data.matches.find((match) => {
@@ -187,6 +189,7 @@ class AppStore extends EventEmitter {
         });
         if(match == undefined) {
             ConsoleStore.writeLine("ERROR: The match between '" + bot_name1 + "' and '" + bot_name2 + "' wasn't found.");
+            return;
         }
         
         this.displayMatchWindow(match);

@@ -255,5 +255,56 @@ body {
     top      : 1.2rem;
     left     : 0;
     width    : 100%;
-    height   : calc(100% - 1.2rem);
+    height   : calc(100% - 3.2rem);
+}
+
+#control-panel {
+    position         : absolute;
+    left             : 0;
+    bottom           : 0;
+    width            : 100%;
+    height           : 2rem;
+    
+    border-top-color : #393;
+    border-top-width : .1rem;
+    border-top-style : solid;
+}
+
+#play-pause-button {
+    position           : absolute;
+    top                : 0;
+    left               : .1rem;
+    width              : 1.9rem;
+    height             : 2rem;
+    
+    border-right-color : #393;
+    border-right-width : .1rem;
+    border-right-style : solid;
+}
+
+#progress-bar {
+    position           : absolute;
+    top                : 0;
+    left               : 2.1rem;
+    width              : calc(100% - 7.2rem);
+    height             : 1.9rem;
+}
+
+#turns-counter {
+    position          : absolute;
+    top               : 0;
+    right             : 0;
+    width             : 5rem;
+    height            : 1.9rem;
+    
+    font-size         : 120%;
+    text-align        : center;
+    
+    border-left-color : #393;
+    border-left-width : .1rem;
+    border-left-style : solid;
+}
+
+#turns-counter-text {
+    margin-top : .5rem;
 }

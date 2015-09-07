@@ -3,6 +3,7 @@ import AppStore from '../stores/AppStore';
 
 import MatchViewerCloseButton from './MatchViewerCloseButton.react';
 import RPSView from './RPSView.react';
+import ViewControlPanel from './ViewControlPanel.react';
 
 class MatchViewer extends React.Component {
     constructor(props) {
@@ -29,16 +30,28 @@ class MatchViewer extends React.Component {
                 </header>
             
                 <RPSView match={this.state.match} bot1_name={this.state.bot_name1} bot2_name={this.state.bot_name2}/>
+            
+                <footer>
+                    <ViewControlPanel/>
+                </footer>
             </div>
         );
     }
     
     _resolveState() {
-        return {
-            match: AppStore.getMatchWindowMatch(),
-            bot_name1: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[0]],
-            bot_name2: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[1]]
-        };
+        if(AppStore.getDisplayMatchWindow()) {
+            return {
+                match: AppStore.getMatchWindowMatch(),
+                bot_name1: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[0]],
+                bot_name2: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[1]]
+            };
+        } else {
+            return {
+                match: undefined,
+                bot_name1: '',
+                bot_name2: ''
+            };
+        }
     }
     
     _onChange() {
