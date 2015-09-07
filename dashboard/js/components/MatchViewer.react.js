@@ -1,8 +1,8 @@
 import React from 'react';
 import AppStore from '../stores/AppStore';
-import DrawMatch from '../utils/DrawMatch';
 
 import MatchViewerCloseButton from './MatchViewerCloseButton.react';
+import RPSView from './RPSView.react';
 
 class MatchViewer extends React.Component {
     constructor(props) {
@@ -14,14 +14,10 @@ class MatchViewer extends React.Component {
     
     componentDidMount() {
         AppStore.onChange(this._onChange);
-        
-        this.state.renderer = this._createRenderer();
-        this.state.renderer.start();
     }
     
     componentWillUnmount() {
         AppStore.off(this._onChange);
-        this.state.renderer.stop();
     }
     
     render() {
@@ -32,36 +28,17 @@ class MatchViewer extends React.Component {
                     <MatchViewerCloseButton/>
                 </header>
             
-                <canvas id="match-view" width="800" height="600">
-                    Sorry, you browser doesn&#39;t support HTML5 canvas API!
-                </canvas>
+                <RPSView match={this.state.match} bot1_name={this.state.bot_name1} bot2_name={this.state.bot_name2}/>
             </div>
         );
     }
     
     _resolveState() {
-        if(AppStore.getDisplayMatchWindow()) {
-            return {
-                renderer: undefined,
-            
-                match: AppStore.getMatchWindowMatch(),
-                bot_name1: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[0]],
-                bot_name2: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[1]]
-            };
-        } else {
-            return {
-                rendere: undefined,
-                
-                match: undefined,
-                bot_name1: undefined,
-                bot_name2: undefined
-            }
-        }
-    }
-    
-    _createRenderer() {
-        let canvas = document.getElementById('match-view');
-        return new DrawMatch(canvas, this.state.match, this.state.bot_name1, this.state.bot_name2);
+        return {
+            match: AppStore.getMatchWindowMatch(),
+            bot_name1: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[0]],
+            bot_name2: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[1]]
+        };
     }
     
     _onChange() {

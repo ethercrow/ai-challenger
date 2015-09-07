@@ -1,15 +1,4 @@
-const initialData = {
-    canvas: undefined,
-    animation_timer: undefined,
-    advance_timer: undefined,
-    
-    match: undefined,
-    bot1_name: '',
-    bot2_name: '',
-    
-    turns: [],
-    current_turn: 0
-};
+import React from 'react';
 
 const images_ids = {
     ROCK_IMAGE: 0,
@@ -22,37 +11,48 @@ let image_resources = {
     image_loaded_flags: [false, false, false]
 };
 
-class DrawMatch {
-    constructor(canvas, match, bot1_name, bot2_name) {
-        this.data = initialData;
+class RPSView extends React.Component {
+    constructor(props) {
+        super(props);
         
-        this.data.canvas = canvas;
-        this.data.match = match;
-        this.data.bot1_name = bot1_name;
-        this.data.bot2_name = bot2_name;
+        this.canvas = undefined;
+        this.animation_timer = undefined;
+        this.advance_timer = undefined;
         
+        this.turns = [];
+        this.current_turn = 0;
+    }
+    
+    componentDidMount() {
+        this.canvas = document.getElementById('match-view');
         this._generateTurns();
-    }
-    
-    start() {
+        
         this._startLoadingImages();
-        this.data.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
-        this.data.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
+        this.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
+        this.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
     }
     
-    stop() {
-        window.clearInterval(this.data.advance_timer);
-        window.clearInterval(this.data.animation_timer);
+    componentWillUnmount() {
+        window.clearInterval(this.advance_timer);
+        window.clearInterval(this.animation_timer);
+    }
+    
+    render() {
+        return (
+            <canvas id="match-view" width="800" height="600">
+                Sorry, you browser doesn&#39;t support HTML5 canvas API!
+            </canvas>
+        );
     }
     
     _advanceTurn() {
-        if(this.data.current_turn < this.data.turns.length) {
-            this.data.current_turn += 1;
+        if(this.current_turn < this.turns.length - 1) {
+            this.current_turn += 1;
         }
     }
     
     _drawFrame() {
-        let context = this.data.canvas.getContext("2d");
+        let context = this.canvas.getContext("2d");
         context.clearRect(0, 0, 800, 600);
         
         if(this._areImagesLoaded()) {
@@ -80,18 +80,18 @@ class DrawMatch {
     }
     
     _drawNormalFrame(context) {
-        const turn = this._getTurn(this.data.current_turn);
+        const turn = this._getTurn(this.current_turn);
         
         context.fillStyle = "green";
         context.font = '48px monospace';
         context.textAlign = 'start';
         context.textBaseline = 'middle';
         
-        this._drawTextBox(context, this.data.bot1_name, 125, 100, 150, 100);
+        this._drawTextBox(context, this.props.bot1_name, 125, 100, 150, 100);
         this._drawMoveImage(context, turn.moves[0], 125, 200);
         this._drawTextBox(context, turn.scores[0], 125, 400, 150, 100);
         
-        this._drawTextBox(context, this.data.bot2_name, 525, 100, 150, 100);
+        this._drawTextBox(context, this.props.bot2_name, 525, 100, 150, 100);
         this._drawMoveImage(context, turn.moves[1], 525, 200);
         this._drawTextBox(context, turn.scores[1], 525, 400, 150, 100);
     }
@@ -126,11 +126,12 @@ class DrawMatch {
     }
     
     _generateTurns() {
-        this.data.turns = this.data.match.log.split('\n');
+        this.turns = this.props.match.log.split('\n');
+        this.current_turn = 0;
     }
     
     _getTurn(n) {
-        let turn_components = this.data.turns[n].split(' ');
+        let turn_components = this.turns[n].split(' ');
         
         return {
             scores: [Number.parseInt(turn_components[0]), Number.parseInt(turn_components[1])],
@@ -167,6 +168,6 @@ class DrawMatch {
             image_resources.images[image_id].src = image_url;
         }
     }
-}
+};
 
-export default DrawMatch;
+export default RPSView;
