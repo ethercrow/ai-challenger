@@ -19,7 +19,8 @@ inChannelFromHandle h = InChannel
             let msg = "receiveLine(" <> showT h <> "): " <> showT (e :: SomeException)
             in return (Left (Fault msg))))
     (hIsEOF h)
-    (catchAll (hClose h))
+    (do print ("closing handle " <> show h)
+        catchAll (hClose h))
 
 stdinChannel :: InChannel
 stdinChannel = inChannelFromHandle stdin
@@ -38,7 +39,8 @@ outChannelFromHandle h = OutChannel
             (\e ->
                 let msg = "sendLine(" <> showT h <> "): " <> showT (e :: SomeException)
                 in return (Left (Fault msg))))
-    (catchAll (hClose h))
+    (do print ("closing handle " <> show h)
+        catchAll (hClose h))
 
 stdoutChannel :: OutChannel
 stdoutChannel = outChannelFromHandle stdout

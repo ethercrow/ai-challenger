@@ -19,7 +19,9 @@ library
     , containers
     , deepseq
     , deepseq-generics
+    , directory
     , ekg
+    , extra
     , lucid
     , mtl
     , network >= 2.6

@@ -10,12 +10,13 @@ module AIChallenger.Bot
 
 import Control.Concurrent
 import Control.Exception
-import Control.Monad
+import Control.Monad.Extra
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Vector.Extended as V
 import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
+import System.Directory
 import System.Exit
 import System.IO
 import System.Process
@@ -34,10 +35,11 @@ data Player = Player
     }
 
 playerClose :: Player -> IO ()
-playerClose (Player _ _ input output shutdown) = do
-    closeInChannel output
-    closeOutChannel input
-    shutdown
+playerClose (Player _ name input output shutdown) = do
+    print ("playerClose " <> name)
+    catchAll (closeInChannel output)
+    catchAll (closeOutChannel input)
+    catchAll shutdown
 
 launchBots :: V.Vector Bot -> IO (Either (V.Vector Bot, Faults) (V.Vector Player))
 launchBots bots = do
@@ -93,34 +95,45 @@ launchBots bots = do
                 in return (Left (pid, pure (Fault msg)))
 
     launch (pid, Bot name (ExecutableBot path)) = do
-        playerOrException <- try $ do
-            handles <-
+        playerOrFaultOrException <- try $ do
+            let exeFilePath = P.toFilePath path
+
+            fileExists <- doesFileExist exeFilePath
+            if not fileExists
+            then return (Left (Fault (T.pack exeFilePath <> " does not exist")))
+            else return (Right ())
+                
+            isExecutable <- executable <$> getPermissions exeFilePath
+            if not isExecutable 
+            then return (Left (Fault (T.pack exeFilePath <> " is not executable")))
+            else return (Right ())
+            
+            (Just hIn, Just hOut, _, procHandle) <-
                 createProcess
-                    (proc (P.toFilePath path) [])
+                    (proc exeFilePath [])
                         { std_out = CreatePipe
                         , std_in = CreatePipe
+                        , close_fds = True
                         , create_group = True
                         }
-            case handles of
-                (Just hIn, Just hOut, _, procHandle) -> do
-                    hSetBuffering hOut LineBuffering
-                    hSetBuffering hIn LineBuffering
-                    return
-                        (Player
-                            pid
-                            name
-                            (outChannelFromHandle hIn)
-                            (inChannelFromHandle hOut)
-                            (catchAll (terminateProcess procHandle)))
-                _ -> do 
-                    putStrLn ("failed to start " <> P.toFilePath path)
-                    exitWith (ExitFailure 10)
-        case playerOrException of
-            Right p -> return (Right p)
-            Left e ->
+            hSetBuffering hOut LineBuffering
+            hSetBuffering hIn LineBuffering
+            return (Right (Player
+                    pid
+                    name
+                    (outChannelFromHandle hIn)
+                    (inChannelFromHandle hOut)
+                    (do (catchAll (terminateProcess procHandle))
+                        (catchAll (void $ waitForProcess procHandle)))))
+        case playerOrFaultOrException of
+            Right (Right p) -> return (Right p)
+            Right (Left fault) ->
+                return (Left (pid, pure fault))
+            Left e -> do
                 let msg = "Failed to launch bot '" <> name <> "': "
                         <> T.pack (show (e :: SomeException))
-                in return (Left (pid, pure (Fault msg)))
+                print msg
+                return (Left (pid, pure (Fault msg)))
 
 instance Show Player where
     show (Player pid name _inCh _outCh _close) =
