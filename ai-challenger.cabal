@@ -36,6 +36,8 @@ library
     , transformers
     , vector
     , wai
+    , wai-extra
+    , wai-middleware-metrics
     , warp
   exposed-modules:
       AIChallenger

@@ -19,6 +19,8 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector as V
 import qualified Network.Wai as Wai
+import Network.Wai.Metrics
+import Network.Wai.Middleware.RequestLogger
 import Path
 import Servant
 import Servant.HTML.Lucid
@@ -36,15 +38,19 @@ type WebAPI
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-tournament" :> Post '[PlainText] T.Text
     :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "help" :> Get '[HTML] T.Text
 
-webApp :: Game game => game -> StateVar -> Wai.Application
-webApp game stateVar =
+webApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
+webApp game stateVar waiMetrics = do
     let handlers = mainPage stateVar
             :<|> readStateVar stateVar
             :<|> postBot stateVar
             :<|> launchTournament game stateVar
             :<|> replay stateVar
-    in serve (Proxy :: Proxy WebAPI) handlers
+            :<|> help
+    let middleware :: [Wai.Application -> Wai.Application]
+        middleware = [metrics waiMetrics, logStdout]
+    foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
 
 postBot :: MonadIO m => StateVar -> Bot -> m Bot
 postBot stateVar bot = do
@@ -78,3 +84,5 @@ replay stateVar mid = do
 
 mainPage :: MonadIO m => StateVar -> m MainPage
 mainPage stateVar = MainPage <$> readStateVar stateVar
+
+help = error "no help yet"
