@@ -20,9 +20,9 @@ class RPSView extends React.Component {
         this.canvas = undefined;
         this.animation_timer = undefined;
         this.advance_timer = undefined;
+        this.keyup_handler = this._onKeyUp.bind(this);;
         
         this.turns = [];
-        this.current_turn = 0;
         this.reset_store = false;
         this.start_playing = false;
         
@@ -39,7 +39,7 @@ class RPSView extends React.Component {
         this.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
         
         ControlPanelStore.onChange(this._onChange);
-        document.addEventListener('keyup', this._onKeyUp.bind(this));
+        document.addEventListener('keyup', this.keyup_handler);
         
         this.start_playing = true;
     }
@@ -51,12 +51,12 @@ class RPSView extends React.Component {
             window.clearInterval(this.advance_timer);
         }
         window.clearInterval(this.animation_timer);
-        document.removeEventListener('keyup', this._onKeyUp.bind(this));
+        document.removeEventListener('keyup', this.keyup_handler);
     }
     
     render() {
         return (
-            <canvas id="match-view" width="800" height="550">
+            <canvas id="match-view" width="800" height="550" onKeyUp={this._onKeyUp.bind(this)}>
                 Sorry, you browser doesn&#39;t support HTML5 canvas API!
             </canvas>
         );
@@ -72,11 +72,10 @@ class RPSView extends React.Component {
     }
     
     _advanceTurn() {
-        if(this._areImagesLoaded() && this.current_turn < this.turns.length - 1) {
-            this.current_turn += 1;
-            ControlPanelActions.changeTurn(this.current_turn);
+        if(this._areImagesLoaded() && this.state.current_turn < this.turns.length - 1) {
+            ControlPanelActions.changeTurn(this.state.current_turn + 1);
         } else {
-            if(this.current_turn = this.turns.length - 1 && this.state.playing) {
+            if(this.state.current_turn = this.turns.length - 1 && this.state.playing) {
                 ControlPanelActions.stopPlaying();
             }
         }
@@ -121,7 +120,7 @@ class RPSView extends React.Component {
     }
     
     _drawNormalFrame(context) {
-        const turn = this._getTurn(this.current_turn);
+        const turn = this._getTurn(this.state.current_turn);
         
         context.fillStyle = "green";
         context.font = '48px monospace';
@@ -168,7 +167,6 @@ class RPSView extends React.Component {
     
     _generateTurns() {
         this.turns = this.props.match.log.split('\n');
-        this.current_turn = 0;
     }
     
     _getTurn(n) {
@@ -224,12 +222,12 @@ class RPSView extends React.Component {
         case 39:
             // Left arrow
             if(event.shiftKey) {
-                if(this.current_turn + 10 <= this.turns.length - 1) {
-                    ControlPanelActions.changeTurn(this.current_turn + 10);
+                if(this.state.current_turn + 10 <= this.turns.length - 1) {
+                    ControlPanelActions.changeTurn(this.state.current_turn + 10);
                 }
             } else {
-                if(this.current_turn < this.turns.length - 1) {
-                    ControlPanelActions.changeTurn(this.current_turn + 1);
+                if(this.state.current_turn < this.turns.length - 1) {
+                    ControlPanelActions.changeTurn(this.state.current_turn + 1);
                 }
             }
             break;
@@ -237,12 +235,12 @@ class RPSView extends React.Component {
         case 37:
             // Right arrow
             if(event.shiftKey) {
-                if(this.current_turn - 10 >= 0) {
-                    ControlPanelActions.changeTurn(this.current_turn - 10);
+                if(this.state.current_turn - 10 >= 0) {
+                    ControlPanelActions.changeTurn(this.state.current_turn - 10);
                 }
             } else {
-                if(this.current_turn != 0) {
-                    ControlPanelActions.changeTurn(this.current_turn - 1);
+                if(this.state.current_turn != 0) {
+                    ControlPanelActions.changeTurn(this.state.current_turn - 1);
                 }
             }
             break;
@@ -253,7 +251,8 @@ class RPSView extends React.Component {
     
     _resolveState() {
         return {
-            playing: ControlPanelStore.isPlaying()
+            playing: ControlPanelStore.isPlaying(),
+            current_turn: ControlPanelStore.getCurrentTurn()
         };
     }
     
@@ -269,7 +268,6 @@ class RPSView extends React.Component {
         }
         
         this.setState(this._resolveState());
-        this.current_turn = ControlPanelStore.getCurrentTurn();
     }
 };
 
