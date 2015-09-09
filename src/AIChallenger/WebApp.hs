@@ -63,11 +63,7 @@ webApp game stateVar waiMetrics =
 wsApp :: StateVar -> ServerApp
 wsApp stateVar pendingConnection = do
     conn <- acceptRequest pendingConnection
-
-    -- TODO: this must be done atomically
-    state <- readStateVar stateVar
-    chan <- subscribeToStateUpdates stateVar
-
+    (state, chan) <- subscribeToStateUpdates stateVar
     sendDataMessage conn (Binary (A.encode state))
     forever $ do
         update <- readChan chan

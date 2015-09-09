@@ -49,5 +49,8 @@ applyServerStateUpdate (RemoveBot bot) ss =
 applyServerStateUpdate (AddMatch match) ss =
     ss { ssMatches = pure match <> ssMatches ss }
 
-subscribeToStateUpdates :: StateVar -> IO (OutChan ServerStateUpdate)
-subscribeToStateUpdates (StateVar _ chan) = dupChan chan
+subscribeToStateUpdates :: StateVar -> IO (ServerState, OutChan ServerStateUpdate)
+subscribeToStateUpdates (StateVar stateVar chan) =
+    withMVar stateVar $ \state -> do
+        outChan <- dupChan chan
+        return (state, outChan)
