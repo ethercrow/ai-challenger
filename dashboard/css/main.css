@@ -31,7 +31,7 @@ body {
     position     : absolute;
     top          : 4rem;
     left         : 0;
-    width        : 15rem;
+    width        : 20rem;
     height       : calc(100vh - 4rem);
     
     overflow-y   : auto;
@@ -40,14 +40,16 @@ body {
 }
 
 #ladder {
-    font-size  : 120%;
+    font-size       : 150%;
     
-    margin-top  : .5rem;
-    margin-left : .3rem;
+    margin-top      : .5rem;
+    margin-left     : .3rem;
+    
+    border-collapse : collapse;
 }
 
 #ladder > caption {
-    font-size        : 120%;
+    font-size        : 150%;
     font-weight      : normal;
     
     text-align       : center;
@@ -77,29 +79,77 @@ body {
     border-right : none;
 }
 
-#ladder tbody > tr:hover {
-    background-color : #030;
-}
-
-/* ============== Console styles =============== */
-#console {
+/* ============ Match table styles ============= */
+#match_table_div {
     position    : absolute;
     top         : 4rem;
-    left        : 15rem;
-    width       : calc(100vw - 15rem);
+    left        : 20rem;
+    width       : calc(100vw - 20rem);
     height      : calc(100vh - 4rem);
+}
+
+#match_table {
+    font-size       : 150%;
     
-    overflow-y  : scroll;
+    margin-top      : .5rem;
+    margin-left     : 1rem;
+    
+    border-collapse : collapse;
 }
 
-#console > pre {
-    margin-top    : 0;
-    margin-bottom : 0;
-    padding-left  : .5rem;
+#match_table > caption {
+    font-size        : 150%;
+    font-weight      : normal;
+    
+    text-align       : center;
 }
 
-#console > pre:first-child {
-    margin-top : .5em;
+#match_table th {
+    padding : .5rem;
+}
+
+#match_table td {
+    padding : .5rem;
+}
+
+#match_table thead > tr > th {
+    border-bottom : .1rem solid;
+}
+
+#match_table tbody > tr > th {
+    border-bottom : .1rem solid;
+}
+#match_table tbody > tr:last-child > th {
+    border-bottom : none;
+}
+
+#match_table tr > td {
+    border-bottom : .1rem solid;
+}
+#match_table tr:last-child > td {
+    border-bottom : none;
+}
+
+#match_table th {
+    text-align   : center;
+    
+    border-right : .1rem solid;
+}
+#match_table th:last-child {
+    border-right : none;
+}
+
+#match_table td {
+    text-align    : center;
+    
+    border-right  : .1rem solid;
+}
+#match_table td:last-child {
+    border-right  : none;
+}
+
+.clickable_cell:hover {
+    background-color : #030;
 }
 
 /* =========== Match viewer styles ============= */

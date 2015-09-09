@@ -4,7 +4,7 @@ import AppStore from '../stores/AppStore';
 
 import Header from './Header.react';
 import Ladder from './Ladder.react';
-import Console from './Console.react';
+import MatchTable from './MatchTable.react';
 import MatchViewer from './MatchViewer.react';
 
 let ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
@@ -32,7 +32,7 @@ class AIChallengerApp extends React.Component {
             <div>
                 <Header/>
                 <Ladder/>
-                <Console/>
+                <MatchTable/>
             
                 <ReactCSSTransitionGroup transitionName="console-window">
                     {win}
