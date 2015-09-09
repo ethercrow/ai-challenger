@@ -6,6 +6,8 @@ class ProgressBar extends React.Component {
     constructor(props) {
         super(props);
         
+        this.cursor_drag_in_progress = false;
+        
         this.state = this._resolveState();
         this._onChange = this._onChange.bind(this);
     }
@@ -25,7 +27,10 @@ class ProgressBar extends React.Component {
     
     render() {
         return (
-            <canvas id="progress-bar" width="600" height="50" onMouseDown={this._onMouseDown.bind(this)}></canvas>
+            <canvas id="progress-bar" width="600" height="50" 
+                onMouseDown={this._onMouseDown.bind(this)}
+                onMouseMove={this._onMouseMove.bind(this)}
+                onMouseUp={this._onMouseUp.bind(this)}></canvas>
         );
     }
     
@@ -35,6 +40,22 @@ class ProgressBar extends React.Component {
         if(pos.x >= 10 && pos.x <= 590) {
             ControlPanelActions.changeTurn(Math.floor((pos.x - 10)*this.state.max_turns/580));
         }
+        
+        this.cursor_drag_in_progress = true;
+    }
+    
+    _onMouseMove(event) {
+        if(this.cursor_drag_in_progress) {
+            const pos = this._getMousePos(event);
+        
+            if(pos.x >= 10 && pos.x <= 590) {
+                ControlPanelActions.changeTurn(Math.floor((pos.x - 10)*this.state.max_turns/580));
+            }
+        }
+    }
+    
+    _onMouseUp(event) {
+        this.cursor_drag_in_progress = false;
     }
     
     _getMousePos(event) {
