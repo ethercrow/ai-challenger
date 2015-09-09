@@ -24,6 +24,7 @@ class RPSView extends React.Component {
         this.turns = [];
         this.current_turn = 0;
         this.reset_store = false;
+        this.start_playing = false;
         
         this.state = this._resolveState();
         this._onChange = this._onChange.bind(this);
@@ -39,6 +40,8 @@ class RPSView extends React.Component {
         
         ControlPanelStore.onChange(this._onChange);
         document.addEventListener('keyup', this._onKeyUp.bind(this));
+        
+        this.start_playing = true;
     }
     
     componentWillUnmount() {
@@ -69,9 +72,13 @@ class RPSView extends React.Component {
     }
     
     _advanceTurn() {
-        if(this.current_turn < this.turns.length - 1) {
+        if(this._areImagesLoaded() && this.current_turn < this.turns.length - 1) {
             this.current_turn += 1;
             ControlPanelActions.changeTurn(this.current_turn);
+        } else {
+            if(this.current_turn = this.turns.length - 1 && this.state.playing) {
+                ControlPanelActions.stopPlaying();
+            }
         }
     }
     
@@ -79,6 +86,11 @@ class RPSView extends React.Component {
         if(this.reset_store) {
             ControlPanelActions.reset(this.turns.length);
             this.reset_store = false;
+        }
+        
+        if(this.start_playing) {
+            ControlPanelActions.startPlaying();
+            this.start_playing = false;
         }
         
         let context = this.canvas.getContext("2d");
@@ -211,12 +223,28 @@ class RPSView extends React.Component {
         
         case 39:
             // Left arrow
-            ControlPanelActions.changeTurn(this.current_turn + 1);
+            if(event.shiftKey) {
+                if(this.current_turn + 10 <= this.turns.length - 1) {
+                    ControlPanelActions.changeTurn(this.current_turn + 10);
+                }
+            } else {
+                if(this.current_turn < this.turns.length - 1) {
+                    ControlPanelActions.changeTurn(this.current_turn + 1);
+                }
+            }
             break;
         
         case 37:
             // Right arrow
-            ControlPanelActions.changeTurn(this.current_turn - 1);
+            if(event.shiftKey) {
+                if(this.current_turn - 10 >= 0) {
+                    ControlPanelActions.changeTurn(this.current_turn - 10);
+                }
+            } else {
+                if(this.current_turn != 0) {
+                    ControlPanelActions.changeTurn(this.current_turn - 1);
+                }
+            }
             break;
         
         default:
