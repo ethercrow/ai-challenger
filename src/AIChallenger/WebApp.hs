@@ -14,7 +14,10 @@ module AIChallenger.WebApp
     ( webApp
     ) where
 
-import Control.Concurrent
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar
+import Control.Concurrent.Chan.Unagi
+import Control.Monad
 import Control.Monad.Trans
 import qualified Data.Aeson as A
 import Data.Monoid
@@ -27,6 +30,8 @@ import qualified Data.Vector as V
 import qualified Network.Wai as Wai
 import Network.Wai.Metrics
 import Network.Wai.Middleware.RequestLogger
+import Network.Wai.Handler.WebSockets
+import Network.WebSockets
 import Path
 import Servant
 import Servant.Docs
@@ -50,7 +55,26 @@ type WebAPI
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
-webApp game stateVar waiMetrics = do
+webApp game stateVar waiMetrics =
+    websocketsOr defaultConnectionOptions
+        (wsApp stateVar)
+        (httpApp game stateVar waiMetrics)
+
+wsApp :: StateVar -> ServerApp
+wsApp stateVar pendingConnection = do
+    conn <- acceptRequest pendingConnection
+
+    -- TODO: this must be done atomically
+    state <- readStateVar stateVar
+    chan <- subscribeToStateUpdates stateVar
+
+    sendDataMessage conn (Binary (A.encode state))
+    forever $ do
+        update <- readChan chan
+        sendDataMessage conn (Binary (A.encode update))
+
+httpApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
+httpApp game stateVar waiMetrics = do
     let handlers = mainPage stateVar
             :<|> readStateVar stateVar
             :<|> postBot stateVar
@@ -135,3 +159,6 @@ instance ToSample MatchPage MatchPage where
 
 instance ToCapture (Capture "matchId" MatchId) where
     toCapture _ = DocCapture "matchId" "Integer id of the match"
+
+instance ToSample ServerStateUpdate ServerStateUpdate where
+    toSample _ = Nothing

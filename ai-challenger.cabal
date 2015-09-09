@@ -38,11 +38,14 @@ library
     , servant-server >= 0.4.2
     , text >= 1.2
     , transformers
+    , unagi-chan
     , vector
     , wai
     , wai-extra
     , wai-middleware-metrics
+    , wai-websockets
     , warp
+    , websockets
   exposed-modules:
       AIChallenger
       AIChallenger.Bot

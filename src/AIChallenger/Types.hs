@@ -101,6 +101,7 @@ data ServerStateUpdate
     = AddBot Bot
     | RemoveBot Bot
     | AddMatch Match
+    deriving Generic
 
 newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
@@ -126,6 +127,8 @@ instance A.ToJSON GameOverType
 instance A.ToJSON PlayerId
 
 instance A.ToJSON Fault
+
+instance A.ToJSON ServerStateUpdate
 
 instance NFData Fault where
     rnf = genericRnf
