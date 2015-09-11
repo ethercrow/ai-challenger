@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Semigroup as S
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
@@ -58,7 +59,7 @@ data Grid = Grid (V.Vector (V.Vector Tile))
 data Order
     = Capture Point
     | Say T.Text
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 data Replay = Replay (V.Vector (Grid, V.Vector Order, V.Vector Order))
     deriving (Show, Eq)
 
@@ -234,14 +235,18 @@ neighborhood8 (x, y) (Grid grid0) =
 applyOrders :: (V.Vector Order, V.Vector Order) -> Grid -> Grid
 applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
     where
+    orderSet1 = Set.fromList (V.toList os1)
+    orderSet2 = Set.fromList (V.toList os2)
+    orderSet1WithoutClashes = Set.difference orderSet1 orderSet2
+    orderSet2WithoutClashes = Set.difference orderSet2 orderSet1
     go :: VM.MVector s (V.Vector Tile) -> ST s ()
     go mgrid = do
-        V.forM_ os1 $ \o -> case o of
+        forM_ orderSet1WithoutClashes $ \o -> case o of
             (Capture (x, y)) -> do
                 row <- VM.read mgrid y
                 VM.write mgrid y (row V.// pure (x, Captured (PlayerId 1)))
             _ -> return ()
-        V.forM_ os2 $ \o -> case o of
+        forM_ orderSet2WithoutClashes $ \o -> case o of
             (Capture (x, y)) -> do
                 row <- VM.read mgrid y
                 VM.write mgrid y (row V.// pure (x, Captured (PlayerId 2)))
