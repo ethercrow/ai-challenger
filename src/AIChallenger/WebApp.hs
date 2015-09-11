@@ -52,6 +52,7 @@ type WebAPI
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-tournament" :> Post '[PlainText] LaunchTournamentReply
     :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
@@ -75,6 +76,7 @@ httpApp game stateVar waiMetrics = do
             :<|> readStateVar stateVar
             :<|> postBot stateVar
             :<|> launchTournament game stateVar
+            :<|> match stateVar
             :<|> replay stateVar
             :<|> help
     let middleware :: [Wai.Application -> Wai.Application]
@@ -100,8 +102,8 @@ launchTournament game stateVar = do
             return ()
     return (LaunchTournamentReply (show (length pairs) <> " matches scheduled"))
 
-replay :: MonadIO m => StateVar -> MatchId -> m MatchPage
-replay stateVar mid = do
+match :: MonadIO m => StateVar -> MatchId -> m MatchPage
+match stateVar mid = do
     ServerState _ _ matches <- readStateVar stateVar
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
@@ -109,6 +111,16 @@ replay stateVar mid = do
         [match] -> do
             replayText <- liftIO (TLIO.readFile (toFilePath (matchReplayPath match)))
             return (MatchPage match replayText)
+        _ -> error "match id collision, this should never happen"
+
+replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
+replay stateVar mid = do
+    ServerState _ _ matches <- readStateVar stateVar
+    -- TODO: better than O(n) lookup
+    case V.filter ((== mid) . matchId) matches of
+        [] -> error ("no match with " <> show mid)
+        [match] -> do
+            ReplayText <$> liftIO (TLIO.readFile (toFilePath (matchReplayPath match)))
         _ -> error "match id collision, this should never happen"
 
 mainPage :: MonadIO m => StateVar -> m MainPage
@@ -120,8 +132,16 @@ newtype APIDocs = APIDocs TL.Text
 
 newtype LaunchTournamentReply = LaunchTournamentReply String
 
+newtype ReplayText = ReplayText TL.Text
+
 instance MimeRender PlainText APIDocs where
     mimeRender _ (APIDocs s) = TLE.encodeUtf8 s
+
+instance MimeRender PlainText ReplayText where
+    mimeRender _ (ReplayText s) = TLE.encodeUtf8 s
+
+instance ToSample ReplayText ReplayText where
+    toSample _ = Just (ReplayText "4 8 P S\n4 9 P S\n4 9 S S")
 
 instance MimeRender HTML APIDocs where
     mimeRender _ (APIDocs s) = renderHtml (MD.markdown MD.def s)
