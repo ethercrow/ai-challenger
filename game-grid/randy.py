@@ -44,6 +44,15 @@ def main():
 
             for (x, y) in targets(budget):
                 print 'C {0} {1}'.format(x, y)
+
+            print 'S ' + random.choice(
+                ( 'Hadouken!'
+                , 'Shoryuken!'
+                , 'Crushit!'
+                , 'Scrum!'
+                , 'Agile!'
+                , 'Continuous delivery!'
+                ))
             print '.'
             sys.stdout.flush()
 

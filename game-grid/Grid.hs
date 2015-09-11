@@ -55,7 +55,9 @@ type Point = (Int, Int)
 
 data Grid = Grid (V.Vector (V.Vector Tile))
     deriving (Show, Eq)
-data Order = Capture Point
+data Order
+    = Capture Point
+    | Say T.Text
     deriving (Show, Eq)
 data Replay = Replay (V.Vector (Grid, V.Vector Order, V.Vector Order))
     deriving (Show, Eq)
@@ -81,6 +83,7 @@ instance Game GridGame where
             x <- readMaybe (T.unpack tx)
             y <- readMaybe (T.unpack ty)
             return (Capture (x, y))
+        "S" : _ : _ -> Just (Say (T.drop 2 s))
         _ -> Nothing
     gameAdvance _ (oldGrid, oldReplay)
         | Score 0 0 <- gridScore oldGrid
@@ -116,8 +119,10 @@ instance Game GridGame where
                 , formatOrders os2
                 , "."
                 ]
+            formatOrder (Capture (x, y)) = TL.pack (unwords ["C", show x, show y])
+            formatOrder (Say msg) = "S " <> TL.fromStrict msg
             formatOrders = TL.intercalate "\n"
-                . fmap (\(Capture (x, y)) -> TL.pack (unwords ["C", show x, show y]))
+                . fmap formatOrder
                 . V.toList
         withFile filepath WriteMode $ \h -> 
             mapM_ (TLIO.hPutStrLn h . formatTurn) turns
@@ -157,7 +162,10 @@ validateOrders rawOrders grid =
     go (p, os) = case fmap (validateOrder p) os of
         (V.all isNothing -> True) ->
             let Energy e = energyBudget grid p
-            in if V.length os > e
+                captureOrders = V.filter (\case
+                    Capture _ -> True
+                    _ -> False) os
+            in if V.length captureOrders > e
                 then Just (p, pure (Fault (showT e <> " energy is not enough for " <> showT (V.length os) <> " orders")))
                 else Nothing
         xs -> Just (p, foldr1 (S.<>) (V.catMaybes xs))
@@ -175,6 +183,10 @@ validateOrders rawOrders grid =
             , checkBound y
             , checkReachability
             ]
+    validateOrder pid (Say msg) =
+        if T.length msg <= 78
+        then Nothing
+        else Just (pure (Fault ("Message length is " <> showT (T.length msg) <> " characters, that's too long")))
 
 suffocate :: Grid -> Grid
 suffocate grid@(Grid g) =
@@ -224,12 +236,16 @@ applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
     where
     go :: VM.MVector s (V.Vector Tile) -> ST s ()
     go mgrid = do
-        V.forM_ os1 $ \(Capture (x, y)) -> do
-            row <- VM.read mgrid y
-            VM.write mgrid y (row V.// pure (x, Captured (PlayerId 1)))
-        V.forM_ os2 $ \(Capture (x, y)) -> do
-            row <- VM.read mgrid y
-            VM.write mgrid y (row V.// pure (x, Captured (PlayerId 2)))
+        V.forM_ os1 $ \o -> case o of
+            (Capture (x, y)) -> do
+                row <- VM.read mgrid y
+                VM.write mgrid y (row V.// pure (x, Captured (PlayerId 1)))
+            _ -> return ()
+        V.forM_ os2 $ \o -> case o of
+            (Capture (x, y)) -> do
+                row <- VM.read mgrid y
+                VM.write mgrid y (row V.// pure (x, Captured (PlayerId 2)))
+            _ -> return ()
 
 newtype Energy = Energy Int
 
