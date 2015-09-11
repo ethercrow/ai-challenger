@@ -1,4 +1,15 @@
 
+Grid game
+---------
+
+It's turn based strategy game on a rectangular grid where players try to control
+the map and eliminate each other by capturing tiles and managing resources.
+
+The game is symmetrical in a sense that, unlike in chess, players make moves
+simultaneously.
+
+There's also no fog of war.
+
 Player communication
 --------------------
 
