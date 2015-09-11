@@ -1,14 +1,26 @@
 import { EventEmitter } from 'events';
 import ActionTypes from '../constants/ActionTypes';
 import Dispatcher from '../dispatcher/AppDispatcher';
-
-import initialData from '../constants/AppStoreInitialData';
+import EngineConnect from '../utils/EngineConnect';
 
 const APP_CHANGE_EVENT = 'app_change';
+
+const initialData = {
+    display_match: undefined,
+    
+    bots: [],
+    matches: []
+};
 
 let data = initialData;
 
 class AppStore extends EventEmitter {
+    constructor() {
+        super();
+        
+        EngineConnect.updateState();
+    }
+    
     emitChange() {
         this.emit(APP_CHANGE_EVENT);
     }
@@ -55,6 +67,11 @@ class AppStore extends EventEmitter {
         return data.bots;
     }
     
+    setBots(bots) {
+        data.bots = bots;
+        this.emitChange();
+    }
+    
     getBotNumVictories(bot_index) {
         return data.matches.reduce((num_victories, match) => {
             return num_victories + ((match.contesters[match.winner] == bot_index)?1:0);
@@ -81,6 +98,11 @@ class AppStore extends EventEmitter {
         });
         
         return match_table;
+    }
+    
+    setMatches(matches) {
+        data.matches = matches;
+        this.emitChange();
     }
 };
 
