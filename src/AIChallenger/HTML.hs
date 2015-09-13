@@ -45,6 +45,7 @@ instance ToHtml MatchPage where
                             foldMap (th_ . toHtml . show) fs
             p_ "Replay:"
             pre_ (toHtml replayText)
+    toHtmlRaw = toHtml
 
 instance ToHtml MainPage where
     toHtml (MainPage (ServerState _ bots matches)) =
@@ -64,6 +65,7 @@ instance ToHtml MainPage where
                         case filter predicate (V.toList matches) of
                             match : _ -> td_ (matchWidget match b1)
                             [] -> td_ ""
+    toHtmlRaw = toHtml
 
 newtype BotWidget = BotWidget Bot
 
@@ -71,6 +73,7 @@ instance ToHtml BotWidget where
     toHtml (BotWidget (Bot name (ExecutableBot exe))) =
         span_ [title_ (T.pack (show exe))] (toHtml name)
     toHtml (BotWidget (Bot name _)) = toHtml name
+    toHtmlRaw = toHtml
 
 botWidget :: Monad m => Bot -> HtmlT m ()
 botWidget = toHtml . BotWidget
@@ -89,6 +92,7 @@ instance ToHtml MatchWidget where
                 TurnLimit -> "TL"
                 Elimination -> "E"
         in a_ [href_ ("match/" <> T.pack (show mid))] text
+    toHtmlRaw = toHtml
 
 matchWidget :: Monad m => Match -> Bot -> HtmlT m ()
 matchWidget match bot = toHtml (MatchWidget match bot)

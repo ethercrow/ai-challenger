@@ -15,14 +15,12 @@ module AIChallenger.WebApp
     ) where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.MVar
 import Control.Concurrent.Chan.Unagi
 import Control.Monad
 import Control.Monad.Trans
 import qualified Data.Aeson as A
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BSL
-import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy.IO as TLIO
@@ -44,6 +42,7 @@ import AIChallenger.Match
 import AIChallenger.StateVar
 import AIChallenger.Types
 
+turnLimit :: Turn
 turnLimit = Turn 100
 
 type WebAPI
@@ -108,9 +107,9 @@ match stateVar mid = do
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
-        [match] -> do
-            replayText <- liftIO (TLIO.readFile (toFilePath (matchReplayPath match)))
-            return (MatchPage match replayText)
+        [m] -> do
+            replayText <- liftIO (TLIO.readFile (toFilePath (matchReplayPath m)))
+            return (MatchPage m replayText)
         _ -> error "match id collision, this should never happen"
 
 replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
@@ -119,13 +118,14 @@ replay stateVar mid = do
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
-        [match] -> do
-            ReplayText <$> liftIO (TLIO.readFile (toFilePath (matchReplayPath match)))
+        [m] -> do
+            ReplayText <$> liftIO (TLIO.readFile (toFilePath (matchReplayPath m)))
         _ -> error "match id collision, this should never happen"
 
 mainPage :: MonadIO m => StateVar -> m MainPage
 mainPage stateVar = MainPage <$> readStateVar stateVar
 
+help :: Monad m => m APIDocs
 help = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy WebAPI)))))
 
 newtype APIDocs = APIDocs TL.Text

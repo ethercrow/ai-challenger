@@ -17,7 +17,6 @@ import qualified Data.Vector.Extended as V
 import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
 import System.Directory
-import System.Exit
 import System.IO
 import System.Process
 import qualified Path as P
@@ -98,33 +97,27 @@ launchBots bots = do
         playerOrFaultOrException <- try $ do
             let exeFilePath = P.toFilePath path
 
-            fileExists <- doesFileExist exeFilePath
-            if not fileExists
-            then return (Left (Fault (T.pack exeFilePath <> " does not exist")))
-            else return (Right ())
-                
             isExecutable <- executable <$> getPermissions exeFilePath
-            if not isExecutable 
+            if not isExecutable
             then return (Left (Fault (T.pack exeFilePath <> " is not executable")))
-            else return (Right ())
-            
-            (Just hIn, Just hOut, _, procHandle) <-
-                createProcess
-                    (proc exeFilePath [])
-                        { std_out = CreatePipe
-                        , std_in = CreatePipe
-                        , close_fds = True
-                        , create_group = True
-                        }
-            hSetBuffering hOut LineBuffering
-            hSetBuffering hIn LineBuffering
-            return (Right (Player
-                    pid
-                    name
-                    (outChannelFromHandle hIn)
-                    (inChannelFromHandle hOut)
-                    (do (catchAll (terminateProcess procHandle))
-                        (catchAll (void $ waitForProcess procHandle)))))
+            else do
+                (Just hIn, Just hOut, _, procHandle) <-
+                    createProcess
+                        (proc exeFilePath [])
+                            { std_out = CreatePipe
+                            , std_in = CreatePipe
+                            , close_fds = True
+                            , create_group = True
+                            }
+                hSetBuffering hOut LineBuffering
+                hSetBuffering hIn LineBuffering
+                return (Right (Player
+                        pid
+                        name
+                        (outChannelFromHandle hIn)
+                        (inChannelFromHandle hOut)
+                        (do (catchAll (terminateProcess procHandle))
+                            (catchAll (void $ waitForProcess procHandle)))))
         case playerOrFaultOrException of
             Right (Right p) -> return (Right p)
             Right (Left fault) ->

@@ -44,7 +44,8 @@ gridScore (Grid tiles) = Score s1 s2
                 (foldMap (\case
                     Empty -> (mempty, mempty)
                     Captured (PlayerId 1) -> (Sum 1, mempty)
-                    Captured (PlayerId 2) -> (mempty, Sum 1)))
+                    Captured (PlayerId 2) -> (mempty, Sum 1)
+                    Captured (PlayerId n) -> error ("Unexpected PlayerId " <> show n)))
                 tiles
 
 data Tile
@@ -184,7 +185,7 @@ validateOrders rawOrders grid =
             , checkBound y
             , checkReachability
             ]
-    validateOrder pid (Say msg) =
+    validateOrder _pid (Say msg) =
         if T.length msg <= 78
         then Nothing
         else Just (pure (Fault ("Message length is " <> showT (T.length msg) <> " characters, that's too long")))
@@ -225,9 +226,6 @@ neighborhood8 (x, y) (Grid grid0) =
             ]
         get (i, j) = (grid0 V.!? j) >>= (V.!? i)
     in mapMaybe get neighborPoints
-
-(!?) :: Grid -> Point -> Maybe Tile
-(Grid grid) !? (x, y) = (grid V.!? y) >>= (V.!? x)
 
 (!) :: Grid -> Point -> Tile
 (Grid grid) ! (x, y) = (grid V.! y) V.! x
