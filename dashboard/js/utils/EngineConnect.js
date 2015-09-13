@@ -1,4 +1,4 @@
-import $ from 'jquery';
+import jQuery from 'jquery';
 import AppStore from '../stores/AppStore';
 
 const engine_url = "http://localhost:8081";
@@ -17,7 +17,7 @@ function _generateMatch(match) {
     let result = {
         contesters: [],
         winner: -1,
-        log: ""
+        log: undefined
     };
     
     let bot1_name = match.matchBots[0].botName;
@@ -55,15 +55,36 @@ function _updateStateSuccess(engine_response) {
     _updateMatches(engine_response);
 }
 
+function _updateMatchLog(index, engine_response) {
+    AppStore.setMatchLog(index, engine_response);
+}
+
 export default {
     updateState() {
-        $.ajax({
+        jQuery.ajax({
             url: engine_url + "/state",
             data: {},
             type: "GET",
             dataType: "json",
             success: (response) => {
                 _updateStateSuccess(response);
+            },
+            error: (xhr, status, error_thrown) => {
+                console.error("Error: " + error_thrown);
+                console.error("Status: " + status);
+                console.dir(xhr);
+            }
+        });
+    },
+    
+    loadMatchLog(index) {
+        jQuery.ajax({
+            url: engine_url + "/replay/" + index,
+            data: {},
+            type: "GET",
+            dataType: "text",
+            success: (response) => {
+                _updateMatchLog(index, response);
             },
             error: (xhr, status, error_thrown) => {
                 console.error("Error: " + error_thrown);

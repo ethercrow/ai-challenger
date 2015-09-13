@@ -19,6 +19,7 @@ class AppStore extends EventEmitter {
         super();
         
         EngineConnect.updateState();
+        window.setInterval(EngineConnect.updateState, 60000);
     }
     
     emitChange() {
@@ -34,7 +35,7 @@ class AppStore extends EventEmitter {
     }
     
     openMatchWindow(bot1_index, bot2_index) {
-        const match = data.matches.find((match) => {
+        const match_index = data.matches.findIndex((match) => {
             if(match.contesters[0] == bot1_index && match.contesters[1] == bot2_index) {
                 return true;
             } else {
@@ -43,12 +44,15 @@ class AppStore extends EventEmitter {
                 } 
             }
         });
-        if(match == undefined) {
+        if(match_index == -1) {
             ConsoleStore.writeLine("ERROR: The match between '" + data.bots[bot1_index] + "' and '" + data.bots[bot2_index] + "' wasn't found.");
             return;
         }
         
-        data.display_match = match;
+        if(data.matches[match_index].log == undefined) {
+            EngineConnect.loadMatchLog(match_index);
+        }
+        data.display_match = data.matches[match_index];
     }
     
     closeMatchWindow() {
@@ -103,6 +107,10 @@ class AppStore extends EventEmitter {
     setMatches(matches) {
         data.matches = matches;
         this.emitChange();
+    }
+    
+    setMatchLog(index, log) {
+        data.matches[index].log = log;
     }
 };
 
