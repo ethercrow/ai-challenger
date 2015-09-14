@@ -89,7 +89,7 @@ class GridView extends React.Component {
     }
     
     _drawLoadingFrame(context) {
-        this._drawTextBox(context, "Loading...", 0, 0, 800, 550);
+        this._drawTextBox(context, "Loading...", 0, 0, this.canvas_width, this.canvas_height);
     }
     
     _drawNormalFrame(context) {
