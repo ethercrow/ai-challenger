@@ -41,6 +41,7 @@ library
     , unagi-chan
     , vector
     , wai
+    , wai-cors
     , wai-extra
     , wai-middleware-metrics
     , wai-websockets

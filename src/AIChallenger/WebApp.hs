@@ -27,6 +27,7 @@ import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector as V
 import qualified Network.Wai as Wai
 import Network.Wai.Metrics
+import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets
@@ -79,7 +80,7 @@ httpApp game stateVar waiMetrics = do
             :<|> replay stateVar
             :<|> help
     let middleware :: [Wai.Application -> Wai.Application]
-        middleware = [metrics waiMetrics, logStdout]
+        middleware = [metrics waiMetrics, logStdout, simpleCors]
     foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
 
 postBot :: MonadIO m => StateVar -> Bot -> m Bot
