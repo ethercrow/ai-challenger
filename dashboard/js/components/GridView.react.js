@@ -2,15 +2,15 @@ import React from 'react';
 import ControlPanelActions from '../actions/ControlPanelActions';
 import ControlPanelStore from '../stores/ControlPanelStore';
 
-const canvas_width = 800;
-const canvas_height = 550;
-
 const player1_color = 'red';
 const player2_color = 'blue';
 
 class GridView extends React.Component {
     constructor(props) {
         super(props);
+        
+        this.canvas_width = 800;
+        this.canvas_height = 600;
         
         this.canvas = undefined;
         this.animation_timer = undefined;
@@ -47,8 +47,11 @@ class GridView extends React.Component {
     }
     
     render() {
+        this.canvas_width = window.innerWidth;
+        this.canvas_height = window.innerHeight;
+        
         return (
-            <canvas id="match-view" width={canvas_width} height={canvas_height}>
+            <canvas id="match-view" width={this.canvas_width} height={this.canvas_height}>
                 Sorry, you browser doesn&#39;t support HTML5 canvas API!
             </canvas>
         );
@@ -75,7 +78,7 @@ class GridView extends React.Component {
     
     _drawFrame() {
         let context = this.canvas.getContext("2d");
-        context.clearRect(0, 0, 800, 600);
+        context.clearRect(0, 0, this.canvas_width, this.canvas_height);
         
         if(this._isLogReady()) {
             this._drawNormalFrame(context);
@@ -118,8 +121,8 @@ class GridView extends React.Component {
         const map_height = map.length;
         
         const cell_max_geom = {
-            width: Math.floor((canvas_width - 2*padding.x - map_width*separator_width)/map_width),
-            height: Math.floor((canvas_height - 2*padding.y - map_height*separator_width)/map_height)
+            width: Math.floor((this.canvas_width - 2*padding.x - map_width*separator_width)/map_width),
+            height: Math.floor((this.canvas_height - 2*padding.y - map_height*separator_width)/map_height)
         };
         let cell = { width: 0, height: 0};
         if(cell_max_geom.width > cell_max_geom.height) {
@@ -136,8 +139,8 @@ class GridView extends React.Component {
         };
         
         const starting_point = {
-            x: padding.x + Math.floor((canvas_width - 2*padding.x - grid.width)/2),
-            y: padding.y + Math.floor((canvas_height - 2*padding.y - grid.height)/2)
+            x: padding.x + Math.floor((this.canvas_width - 2*padding.x - grid.width)/2),
+            y: padding.y + Math.floor((this.canvas_height - 2*padding.y - grid.height)/2)
         };
         
         return {
