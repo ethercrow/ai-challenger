@@ -59,11 +59,11 @@ type WebAPI
     :<|> "js" :> Raw
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
-webApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
-webApp game stateVar waiMetrics =
+webApp :: Game game => game -> StateVar -> WaiMetrics -> Path Abs Dir -> Wai.Application
+webApp game stateVar waiMetrics dashboardDir =
     websocketsOr defaultConnectionOptions
         (wsApp stateVar)
-        (httpApp game stateVar waiMetrics)
+        (httpApp game stateVar waiMetrics dashboardDir)
 
 wsApp :: StateVar -> ServerApp
 wsApp stateVar pendingConnection = do
@@ -74,18 +74,18 @@ wsApp stateVar pendingConnection = do
         update <- readChan chan
         sendDataMessage conn (Binary (A.encode update))
 
-httpApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
-httpApp game stateVar waiMetrics = do
+httpApp :: Game game => game -> StateVar -> WaiMetrics -> Path Abs Dir -> Wai.Application
+httpApp game stateVar waiMetrics dashboardDir = do
     let handlers = mainPage stateVar
             :<|> readStateVar stateVar
             :<|> postBot stateVar
             :<|> launchTournament game stateVar
             :<|> match stateVar
             :<|> replay stateVar
-            :<|> serveDirectory "dashboard"
-            :<|> serveDirectory "dashboard/css"
-            :<|> serveDirectory "dashboard/images"
-            :<|> serveDirectory "dashboard/js"
+            :<|> serveDirectory (toFilePath dashboardDir)
+            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "css")))
+            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "images")))
+            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "js")))
             :<|> help
     let middleware :: [Wai.Application -> Wai.Application]
         middleware = [metrics waiMetrics, logStdout, simpleCors]
