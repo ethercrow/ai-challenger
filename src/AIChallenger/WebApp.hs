@@ -53,6 +53,10 @@ type WebAPI
     :<|> "launch-tournament" :> Post '[PlainText] LaunchTournamentReply
     :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
     :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
+    :<|> "dashboard" :> Raw
+    :<|> "css" :> Raw
+    :<|> "images" :> Raw
+    :<|> "js" :> Raw
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> WaiMetrics -> Wai.Application
@@ -78,6 +82,10 @@ httpApp game stateVar waiMetrics = do
             :<|> launchTournament game stateVar
             :<|> match stateVar
             :<|> replay stateVar
+            :<|> serveDirectory "dashboard"
+            :<|> serveDirectory "dashboard/css"
+            :<|> serveDirectory "dashboard/images"
+            :<|> serveDirectory "dashboard/js"
             :<|> help
     let middleware :: [Wai.Application -> Wai.Application]
         middleware = [metrics waiMetrics, logStdout, simpleCors]
