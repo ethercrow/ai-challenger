@@ -1,5 +1,6 @@
 module AIChallenger.StateVar
     ( StateVar
+    , addBot
     , readStateVar
     , takeNextMatchId
     , mkStateVar
@@ -11,6 +12,7 @@ import Control.Concurrent.MVar
 import Control.Concurrent.Chan.Unagi
 import Control.Monad.IO.Class
 import Control.DeepSeq
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Monoid
 
@@ -27,6 +29,19 @@ takeNextMatchId (StateVar var _) =
         let mid@(MatchId x) = ssNextMatchId value
             newValue = value { ssNextMatchId = MatchId (x + 1) }
         in newValue `deepseq` return $! (newValue, mid)
+
+addBot :: MonadIO m => Bot -> StateVar -> m (Either String Bot)
+addBot bot (StateVar var chan) = do
+    let name = botName bot
+    liftIO . modifyMVar var $ \value ->
+        if any ((== name) . botName) (ssBots value)
+        then 
+            return $!! (value, Left ("Bot named '" <> T.unpack name <> "' already exists"))
+        else do
+            let u = AddBot bot
+                newValue = applyServerStateUpdate u value
+            writeChan chan u
+            return $!! (newValue, Right bot)
 
 modifyStateVar :: MonadIO m => StateVar -> ServerStateUpdate -> m ServerState
 modifyStateVar (StateVar var chan) u =

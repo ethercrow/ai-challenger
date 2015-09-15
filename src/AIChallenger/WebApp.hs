@@ -94,8 +94,10 @@ httpApp game stateVar waiMetrics dashboardDir = do
 postBot :: MonadIO m => StateVar -> Bot -> m Bot
 postBot stateVar bot = do
     liftIO (putStrLn ("Adding bot: " <> show bot))
-    _ <- modifyStateVar stateVar (AddBot bot)
-    return bot
+    newBotOrError <- addBot bot stateVar
+    case newBotOrError of
+        Right newBot -> return bot
+        Left err -> error err
 
 launchTournament :: (Game game, MonadIO m) => game -> StateVar -> m LaunchTournamentReply
 launchTournament game stateVar = do
