@@ -3,6 +3,7 @@ module AIChallenger.StateVar
     , addBot
     , readStateVar
     , takeNextMatchId
+    , takeNextTournamentId
     , mkStateVar
     , modifyStateVar
     , subscribeToStateUpdates
@@ -30,6 +31,13 @@ takeNextMatchId (StateVar var _) =
             newValue = value { ssNextMatchId = MatchId (x + 1) }
         in newValue `deepseq` return $! (newValue, mid)
 
+takeNextTournamentId :: MonadIO m => StateVar -> m TournamentId
+takeNextTournamentId (StateVar var _) =
+    liftIO . modifyMVar var $ \value ->
+        let tid@(TournamentId x) = ssNextTournamentId value
+            newValue = value { ssNextTournamentId = TournamentId (x + 1) }
+        in newValue `deepseq` return $! (newValue, tid)
+
 addBot :: MonadIO m => Bot -> StateVar -> m (Either String Bot)
 addBot bot (StateVar var chan) = do
     let name = botName bot
@@ -53,7 +61,7 @@ modifyStateVar (StateVar var chan) u =
 
 mkStateVar :: MonadIO m => m StateVar
 mkStateVar = StateVar
-    <$> liftIO (newMVar (ServerState (MatchId 0) mempty mempty))
+    <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty))
     <*> (fst <$> liftIO newChan)
 
 applyServerStateUpdate :: ServerStateUpdate -> ServerState -> ServerState

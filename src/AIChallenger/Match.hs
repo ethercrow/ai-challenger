@@ -21,8 +21,8 @@ import System.Timeout
 import AIChallenger.Bot
 import AIChallenger.Types
 
-launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> MatchId -> IO Match
-launchBotsAndSimulateMatch game turnLimit bots mid@(MatchId x) = do
+launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> TournamentId -> MatchId -> IO Match
+launchBotsAndSimulateMatch game turnLimit bots tournamentId mid@(MatchId x) = do
     replayPath <- parseAbsFile ("/tmp/" <> show x <> ".replay")
     let work (Right players) = do
              GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
@@ -30,11 +30,11 @@ launchBotsAndSimulateMatch game turnLimit bots mid@(MatchId x) = do
              let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
              let winnerNames = fmap playerName winnerPlayers
                  winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
-             return (Match mid bots winnerBots gameOver replayPath)
+             return (Match mid tournamentId bots winnerBots gameOver replayPath)
         work (Left (winnerBots, faults)) = do
              let replay = gameExtractReplay game (gameInitialState game)
              gameSaveReplay game replayPath replay
-             return (Match mid bots winnerBots (Disqualification faults) replayPath)
+             return (Match mid tournamentId bots winnerBots (Disqualification faults) replayPath)
     bracket
         (launchBots bots)
         (either (const (return ())) (V.mapM_ playerClose))

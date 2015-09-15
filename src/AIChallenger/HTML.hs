@@ -25,7 +25,7 @@ data MatchPage = MatchPage
 newtype MainPage = MainPage ServerState
 
 instance ToHtml MatchPage where
-    toHtml (MatchPage (Match (MatchId mid) bots winners gameover _) replayText) =
+    toHtml (MatchPage (Match (MatchId mid) _tournamentId bots winners gameover _) replayText) =
         doctypehtml_ $ do
             p_ (toHtml ("Match #" <> show mid))
             p_ "Bots:"
@@ -48,7 +48,7 @@ instance ToHtml MatchPage where
     toHtmlRaw = toHtml
 
 instance ToHtml MainPage where
-    toHtml (MainPage (ServerState _ bots matches)) =
+    toHtml (MainPage (ServerState _ _ bots matches)) =
         doctypehtml_ $ do
             h1_ "Welcome!"
             h2_ "Bots"
@@ -81,7 +81,7 @@ botWidget = toHtml . BotWidget
 data MatchWidget = MatchWidget Match Bot
 
 instance ToHtml MatchWidget where
-    toHtml (MatchWidget (Match (MatchId mid) _ winners gameover _) b1) =
+    toHtml (MatchWidget (Match (MatchId mid) _ _ winners gameover _) b1) =
         let text = winText <> ":" <> gameoverText
             winText =
                 if winners == pure b1 then "W"

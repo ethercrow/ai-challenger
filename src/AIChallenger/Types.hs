@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -21,8 +22,10 @@ import Path
 import Path.Internal
 import Servant
 
+type BotName = T.Text
+
 data Bot = Bot
-    { botName :: !T.Text
+    { botName :: !BotName
     , botCommunication :: !BotCommunication
     } deriving (Show, Generic, Eq)
 
@@ -33,10 +36,23 @@ data BotCommunication
     deriving (Show, Generic, Eq)
 
 newtype MatchId = MatchId Int
-    deriving (Show, Generic, Eq, Ord)
+    deriving (Show, Eq, Ord, A.ToJSON, NFData, FromText)
+
+newtype TournamentId = TournamentId Int
+    deriving (Eq, Ord, Show, A.ToJSON, NFData, FromText)
+
+data TournamentKind = RoundRobin | Training !BotName
+    deriving (Eq, Ord, Show)
+
+data Tournament = Tournament
+    { tId :: !TournamentId
+    , tKind :: !TournamentKind
+    , tSize :: !Int
+    }
 
 data Match = Match
     { matchId :: !MatchId
+    , matchTournament :: !TournamentId
     , matchBots :: !(V.Vector Bot)
     , matchWinners :: !(V.Vector Bot)
     , matchGameOverType :: !GameOverType
@@ -45,6 +61,7 @@ data Match = Match
 
 data ServerState = ServerState
     { ssNextMatchId :: !MatchId
+    , ssNextTournamentId :: !TournamentId
     , ssBots :: !(V.Vector Bot)
     , ssMatches :: !(V.Vector Match)
     } deriving (Show, Generic)
@@ -56,9 +73,6 @@ instance NFData Bot where
     rnf = genericRnf
 
 instance NFData BotCommunication where
-    rnf = genericRnf
-
-instance NFData MatchId where
     rnf = genericRnf
 
 instance NFData Match where
@@ -90,12 +104,7 @@ instance A.ToJSON BotCommunication
 
 instance A.ToJSON ServerState
 
-instance A.ToJSON MatchId
-
 instance A.ToJSON Match
-
-instance FromText MatchId where
-    fromText = fmap MatchId <$> fromText
 
 data ServerStateUpdate
     = AddBot Bot

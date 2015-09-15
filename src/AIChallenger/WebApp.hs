@@ -21,6 +21,7 @@ import Control.Monad.Trans
 import qualified Data.Aeson as A
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BSL
+import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy.IO as TLIO
@@ -50,7 +51,8 @@ type WebAPI
     = Get '[HTML] MainPage
     :<|> "state" :> Get '[JSON] ServerState
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
-    :<|> "launch-tournament" :> Post '[PlainText] LaunchTournamentReply
+    :<|> "launch-round-robin-tournament" :> Post '[PlainText] LaunchTournamentReply
+    :<|> "launch-training" :> Capture "botName" T.Text :> Post '[PlainText] LaunchTournamentReply
     :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
     :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
     :<|> "dashboard" :> Raw
@@ -79,7 +81,8 @@ httpApp game stateVar waiMetrics dashboardDir = do
     let handlers = mainPage stateVar
             :<|> readStateVar stateVar
             :<|> postBot stateVar
-            :<|> launchTournament game stateVar
+            :<|> launchRoundRobinTournament game stateVar
+            :<|> launchTraining game stateVar
             :<|> match stateVar
             :<|> replay stateVar
             :<|> serveDirectory (toFilePath dashboardDir)
@@ -96,25 +99,45 @@ postBot stateVar bot = do
     liftIO (putStrLn ("Adding bot: " <> show bot))
     newBotOrError <- addBot bot stateVar
     case newBotOrError of
-        Right newBot -> return bot
+        Right newBot -> return newBot
         Left err -> error err
 
-launchTournament :: (Game game, MonadIO m) => game -> StateVar -> m LaunchTournamentReply
-launchTournament game stateVar = do
-    ServerState _ bots _ <- readStateVar stateVar
-    let pairs = [V.fromList [b1, b2] | b1 <- bots, b2 <- bots, b1 < b2]
-    _ <- liftIO . forkIO $ do
-        V.forM_ pairs $ \pair -> do
-            mid <- takeNextMatchId stateVar
-            result <- launchBotsAndSimulateMatch game turnLimit pair mid
-            putStrLn ("Finished " <> show mid)
-            _ <- modifyStateVar stateVar (AddMatch result)
-            return ()
-    return (LaunchTournamentReply (show (length pairs) <> " matches scheduled"))
+launchRoundRobinTournament :: (Game game, MonadIO m) => game -> StateVar -> m LaunchTournamentReply
+launchRoundRobinTournament game stateVar = do
+    launchTournament stateVar RoundRobin (launchBotsAndSimulateMatch game turnLimit)
+
+launchTraining :: (Game game, MonadIO m) => game -> StateVar -> BotName -> m LaunchTournamentReply
+launchTraining game stateVar name = do
+    launchTournament stateVar (Training name) (launchBotsAndSimulateMatch game turnLimit)
+
+launchTournament :: MonadIO m => StateVar -> TournamentKind ->
+     (V.Vector Bot -> TournamentId -> MatchId -> IO Match) -> m LaunchTournamentReply
+launchTournament stateVar tournamentKind play = do
+    bots <- ssBots <$> readStateVar stateVar
+    let pairs = case tournamentKind of 
+            RoundRobin -> [V.fromList [b1, b2] | b1 <- bots, b2 <- bots, b1 < b2]
+            Training name ->
+                let myBot = V.head (V.filter ((== name) . botName) bots)
+                in [V.fromList [myBot, other] | other <- bots, myBot /= other]
+    let roundCount = length pairs
+    if roundCount < 1
+    then error "Not enough bots for a tournament"
+    else do
+        matchIds <- replicateM roundCount (takeNextMatchId stateVar)
+        tournamentId <- takeNextTournamentId stateVar
+        _ <- liftIO . forkIO $ do
+            putStrLn (show tournamentId <> " started")
+            forM_ (zip matchIds (V.toList pairs)) $ \(mId, pair) -> do
+                result <- play pair tournamentId mId
+                putStrLn ("Finished " <> show mId)
+                _ <- modifyStateVar stateVar (AddMatch result)
+                return ()
+            putStrLn (show tournamentId <> " finished")
+        return (LaunchTournamentReply (show roundCount <> " matches scheduled"))
 
 match :: MonadIO m => StateVar -> MatchId -> m MatchPage
 match stateVar mid = do
-    ServerState _ _ matches <- readStateVar stateVar
+    matches <- ssMatches <$> readStateVar stateVar
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
@@ -125,7 +148,7 @@ match stateVar mid = do
 
 replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
 replay stateVar mid = do
-    ServerState _ _ matches <- readStateVar stateVar
+    matches <- ssMatches <$> readStateVar stateVar
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
@@ -173,7 +196,7 @@ instance ToSample ServerState ServerState where
         scarlett <- Bot "Scarlett" . ExecutableBot <$> parseAbsFile "/tmp/scarlett.py"
         let bots = [rocky, pepper, scarlett]
             matches = mempty
-        return (ServerState (MatchId (V.length matches)) bots matches)
+        return (ServerState (MatchId (V.length matches)) (TournamentId 0) bots matches)
 
 instance ToSample Bot Bot where
     toSample _ = Bot "Randy" . ExecutableBot <$> parseAbsFile "/home/randy/src/shiny_metal_bot.sh"
@@ -186,6 +209,9 @@ instance ToSample MatchPage MatchPage where
 
 instance ToCapture (Capture "matchId" MatchId) where
     toCapture _ = DocCapture "matchId" "Integer id of the match"
+
+instance ToCapture (Capture "botName" T.Text) where
+    toCapture _ = DocCapture "botName" "Name of the bot that will play against all other bots"
 
 instance ToSample ServerStateUpdate ServerStateUpdate where
     toSample _ = Nothing

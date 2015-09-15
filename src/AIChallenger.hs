@@ -7,6 +7,8 @@ module AIChallenger
     , getConfigFromCommandlineFlags
     ) where
 
+import Data.Function
+import Data.String
 import qualified Data.Text as T
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Metrics
@@ -31,4 +33,7 @@ startJudge game config = do
     mapM_ (modifyStateVar stateVar . AddBot) bots
     selfPath <- parseAbsFile =<< getExecutablePath
     let dashboardDir = parent selfPath </> $(mkRelDir "dashboard")
-    Warp.run (cfgPort config) (webApp game stateVar webMetrics dashboardDir)
+        settings = Warp.defaultSettings
+            & Warp.setPort (cfgPort config)
+            & Warp.setHost (fromString (cfgAddress config))
+    Warp.runSettings settings (webApp game stateVar webMetrics dashboardDir)
