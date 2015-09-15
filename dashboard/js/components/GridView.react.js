@@ -138,14 +138,16 @@ class GridView extends React.Component {
         
         let prev_map = undefined;
         if(this.state.current_turn != 0) {
-            prev_map = this._parseTurn(this.state.current_turn - 1);
+            prev_map = this._parseTurn(this.state.current_turn - 1).map;
         }
         
-        const map = this._parseTurn(this.state.current_turn);
+        const map_and_moves = this._parseTurn(this.state.current_turn);
+        const map = map_and_moves.map;
         const grid_params = this._computeGridParams(map);
         
         this._drawGrid(context, map, grid_params);
         this._drawPlayers(context, map, prev_map, grid_params);
+        this._drawMoves(context, grid_params, map_and_moves.commands);
     }
     
     _computeGridParams(map) {
@@ -290,12 +292,29 @@ class GridView extends React.Component {
         
         context.beginPath();
         context.fillStyle = color;
-        context.arc(Math.floor(grid_params.cell.width/2), Math.floor(grid_params.cell.height/2), 
-                    size, 0, 2*Math.PI, true);
+        context.arc(Math.floor(grid_params.cell.width/2), Math.floor(grid_params.cell.height/2), size, 0, 2*Math.PI, true);
         context.fill();
         context.closePath();
         
         context.restore();
+    }
+    
+    _drawMoves(context, grid_params, commands) {
+        for(let player = 0; player < 2; player++) {
+            context.strokeStyle = _gridview_params.player_colors[player];
+            context.lineWidth = 3;
+            
+            const padding = 2*player;
+            commands[player].forEach((cmd) => {
+                context.save();
+                context.translate(grid_params.starting_point.x + cmd.x*(grid_params.separator_width + grid_params.cell.width) + padding,
+                                  grid_params.starting_point.y + cmd.y*(grid_params.separator_width + grid_params.cell.height) + padding);
+                
+                context.strokeRect(0, 0, grid_params.cell.width - 2*padding, grid_params.cell.height - 2*padding);
+                
+                context.restore();
+            });
+        }
     }
     
     _drawTextBox(context, text, x, y, width, height) {
@@ -321,7 +340,16 @@ class GridView extends React.Component {
     }
     
     _parseTurn(n) {
-        const map_str = this.turns[n].split('O')[0];
+        const str = this.turns[n];
+        
+        return {
+            map: this._parseMap(str),
+            commands: this._parsePlayerCommands(str)
+        };
+    }
+    
+    _parseMap(str) {
+        const map_str = str.split('O')[0];
         const map_lines = map_str.split('\n');
         
         const first_line_idx = map_lines.findIndex((line) => { return line == "W"; }) + 1;
@@ -365,6 +393,41 @@ class GridView extends React.Component {
         }
         
         return map;
+    }
+    
+    _parsePlayerCommands(str) {
+        let result = [[], []];
+        
+        const commands = str.split('\n');
+        let current_player = -1;
+        commands.forEach((cmd) => {
+            let tokens = cmd.split(' ').reduce((acc, token) => {
+                if(token != "") {
+                    return acc + [token];
+                } else {
+                    return acc;
+                }
+            }, []);
+            
+            switch(tokens[0]) {
+            case 'O':
+                current_player = Number.parseInt(tokens[1]);
+                break;
+            
+            case 'C':
+                if(current_player != -1) {
+                    result[current_player - 1].push({
+                        x: Number.parseInt(tokens[1]),
+                        y: Number.parseInt(tokens[2])
+                    });
+                }
+                break;
+            
+            default:
+            }
+        });
+        
+        return result;
     }
     
     _onKeyUp(event) {
