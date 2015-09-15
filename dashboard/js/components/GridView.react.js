@@ -2,8 +2,14 @@ import React from 'react';
 import ControlPanelActions from '../actions/ControlPanelActions';
 import ControlPanelStore from '../stores/ControlPanelStore';
 
-const player1_color = 'red';
-const player2_color = 'blue';
+const _gridview_params = {
+    player_colors: ['red', 'blue'],
+    delays: {
+        animation: 100,
+        advance: 1000
+    },
+    max_transition_counter: 4
+};
 
 class GridView extends React.Component {
     constructor(props) {
@@ -21,6 +27,9 @@ class GridView extends React.Component {
         this.reset_store = false;
         this.start_playing = false;
         
+        this.transition_counter = 0;
+        this.transition_timer = undefined;
+        
         this.state = this._resolveState();
         this._onChange = this._onChange.bind(this);
     }
@@ -28,7 +37,7 @@ class GridView extends React.Component {
     componentDidMount() {
         this.canvas = document.getElementById('match-view');
         
-        this.animation_timer = window.setInterval(this._drawFrame.bind(this), 100);
+        this.animation_timer = window.setInterval(this._drawFrame.bind(this), _gridview_params.delays.animation);
         
         ControlPanelStore.onChange(this._onChange);
         document.addEventListener('keyup', this.keyup_handler);
@@ -58,7 +67,7 @@ class GridView extends React.Component {
     }
     
     _startPlaying() {
-        this.advance_timer = window.setInterval(this._advanceTurn.bind(this), 1000);
+        this.advance_timer = window.setInterval(this._advanceTurn.bind(this), _gridview_params.delays.advance);
     }
     
     _stopPlaying() {
@@ -73,6 +82,30 @@ class GridView extends React.Component {
             if(this.state.current_turn = this.turns.length - 1 && this.state.playing) {
                 ControlPanelActions.stopPlaying();
             }
+        }
+    }
+    
+    _startTransition() {
+        if(this.transition_timer) {
+            this._stopTransition();
+        }
+        
+        this.transition_timer = window.setInterval(this._advanceTransition.bind(this), _gridview_params.delays.advance/10);
+        this.transition_counter = _gridview_params.max_transition_counter;
+    }
+    
+    _stopTransition() {
+        if(this.transition_timer) {
+            window.clearInterval(this.transition_timer);
+            this.transition_counter = 0;
+        }
+    }
+    
+    _advanceTransition() {
+        if(this.transition_counter == 0) {
+            this._stopTransition();
+        } else {
+            this.transition_counter--;
         }
     }
     
@@ -103,11 +136,16 @@ class GridView extends React.Component {
             this.start_playing = false;
         }
         
+        let prev_map = undefined;
+        if(this.state.current_turn != 0) {
+            prev_map = this._parseTurn(this.state.current_turn - 1);
+        }
+        
         const map = this._parseTurn(this.state.current_turn);
         const grid_params = this._computeGridParams(map);
         
         this._drawGrid(context, map, grid_params);
-        this._drawPlayers(context, map, grid_params);
+        this._drawPlayers(context, map, prev_map, grid_params);
     }
     
     _computeGridParams(map) {
@@ -196,31 +234,64 @@ class GridView extends React.Component {
         context.restore();
     }
     
-    _drawPlayers(context, map, grid_params) {
+    _drawPlayers(context, map, prev_map, grid_params) {
         for(let x = 0; x < map[0].length; x++) {
             for(let y = 0; y < map.length; y++) {
-                switch(map[y][x]) {
-                case 1:
-                    this._drawPlayer(context, grid_params, x, y, player1_color);
-                    break;
-                
-                case 2:
-                    this._drawPlayer(context, grid_params, x, y, player2_color);
-                    break;
+                if(map[y][x] != 0) {
+                    if(prev_map == undefined || prev_map[y][x] == 0) {
+                        const color = _gridview_params.player_colors[map[y][x] - 1];
+                        const transition = 'appear';
+                        this._drawPlayer(context, grid_params, x, y, color, transition);
+                    } else {
+                        if(prev_map[y][x] != map[y][x]) {
+                            let color = _gridview_params.player_colors[prev_map[y][x] - 1];
+                            let transition = 'disappear';
+                            this._drawPlayer(context, grid_params, x, y, color, transition);
+                            
+                            color = _gridview_params.player_colors[map[y][x] - 1];
+                            transition = 'appear';
+                            this._drawPlayer(context, grid_params, x, y, color, transition);
+                        } else {
+                            let color = _gridview_params.player_colors[map[y][x] - 1];
+                            let transition = 'none';
+                            this._drawPlayer(context, grid_params, x, y, color, transition);
+                        }
+                    }
+                } else {
+                    if(prev_map != undefined && prev_map[y][x] != 0) {
+                        let color = _gridview_params.player_colors[prev_map[y][x] - 1];
+                        let transition = 'disappear';
+                        this._drawPlayer(context, grid_params, x, y, color, transition);
+                    }
                 }
             }
         }
     }
     
-    _drawPlayer(context, grid_params, x, y, color) {
+    _drawPlayer(context, grid_params, x, y, color, transition) {
+        const full_size = Math.floor(grid_params.cell.width/2) - 2;
+        const step = full_size/_gridview_params.max_transition_counter;
+        let size = full_size;
+        switch(transition) {
+        case 'appear':
+            size = (_gridview_params.max_transition_counter - this.transition_counter)*step;
+            break;
+        
+        case 'disappear':
+            size = this.transition_counter*step;
+            break;
+        
+        default:
+        }
+        
         context.save();
         context.translate(grid_params.starting_point.x + x*(grid_params.separator_width + grid_params.cell.width),
-        grid_params.starting_point.y + y*(grid_params.separator_width + grid_params.cell.height));
+                          grid_params.starting_point.y + y*(grid_params.separator_width + grid_params.cell.height));
         
         context.beginPath();
         context.fillStyle = color;
         context.arc(Math.floor(grid_params.cell.width/2), Math.floor(grid_params.cell.height/2), 
-                    Math.floor(grid_params.cell.width/2) - 2, 0, 2*Math.PI, true);
+                    size, 0, 2*Math.PI, true);
         context.fill();
         context.closePath();
         
@@ -353,6 +424,10 @@ class GridView extends React.Component {
             } else {
                 this._stopPlaying();
             }
+        }
+        
+        if(this.state.current_turn < new_state.current_turn) {
+            this._startTransition();
         }
         
         this.setState(new_state);
