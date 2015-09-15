@@ -8,6 +8,7 @@ module AIChallenger
     ) where
 
 import Data.Function
+import Data.Monoid
 import Data.String
 import qualified Data.Text as T
 import qualified Network.Wai.Handler.Warp as Warp
@@ -23,7 +24,7 @@ import AIChallenger.WebApp
 
 startJudge :: Game game => game -> Config -> IO ()
 startJudge game config = do
-    metricStore <- EKG.serverMetricStore <$> EKG.forkServer "localhost" 7999
+    metricStore <- EKG.serverMetricStore <$> EKG.forkServer "127.0.0.1" 7999
     webMetrics <- registerWaiMetrics metricStore
     stateVar <- mkStateVar
     let bots =
@@ -36,4 +37,8 @@ startJudge game config = do
         settings = Warp.defaultSettings
             & Warp.setPort (cfgPort config)
             & Warp.setHost (fromString (cfgAddress config))
+    putStrLn ("Dashboard is at http://" <> cfgAddress config
+        <> ":" <> show (cfgPort config)
+        <> "/dashboard")
+    putStrLn "EKG is at http://127.0.0.1:7999"
     Warp.runSettings settings (webApp game stateVar webMetrics dashboardDir)

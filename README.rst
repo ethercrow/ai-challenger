@@ -4,24 +4,27 @@
 
 AI Challenger is a platform for hosting bot competitions.
 
-Installing
+Prerequisites
+-------------
+
+ - npm for building frontend
+ - stack for building backend
+
+Building
 ----------
 
 ::
 
   stack setup # if you don't have ghc-7.10.2 installed
-  stack install
+  make release # this has a side effect of producing a tarball with a binary
 
 Running
 -------
 
-For Rock-Paper-Scissors game::
+::
 
-  ai-challenger-rps
-
-For Grid game::
-
-  ai-challenger-grid
+  ./ai-challenger-grid/ai-challenger-grid --port 8081 --address 127.0.0.1
+  ./tourney_grid.sh # launch a tournament between bundled bots
 
 Server API doc...
 ------------------
