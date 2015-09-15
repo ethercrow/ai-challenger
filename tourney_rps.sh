@@ -10,7 +10,7 @@ curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"rocky\", \"bot
 
 curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"randy\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/game-rps/randy.py\"}}" http://127.0.0.1:8081/add-bot
 
-curl -XPOST http://127.0.0.1:8081/launch-tournament
+curl -XPOST http://127.0.0.1:8081/launch-round-robin-tournament
 
 sleep 1
 echo ''
