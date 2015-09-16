@@ -2,13 +2,16 @@ import React from 'react';
 import ControlPanelActions from '../actions/ControlPanelActions';
 import ControlPanelStore from '../stores/ControlPanelStore';
 
+import LogParser from '../utils/LogParser';
+
 const _gridview_params = {
     player_colors: ['red', 'blue'],
     delays: {
-        animation: 100,
-        advance: 1000
+        animation: 50,
+        advance: 1000,
+        transition: 1000/100
     },
-    max_transition_counter: 4
+    max_transition_counter: 40
 };
 
 class GridView extends React.Component {
@@ -79,7 +82,7 @@ class GridView extends React.Component {
         if(this._isLogReady() && this.state.current_turn < this.turns.length - 2) {
             ControlPanelActions.changeTurn(this.state.current_turn + 1);
         } else {
-            if(this.state.current_turn == this.turns.length - 1 && this.state.playing) {
+            if(this.state.current_turn == this.turns.length - 2 && this.state.playing) {
                 ControlPanelActions.stopPlaying();
             }
         }
@@ -90,7 +93,7 @@ class GridView extends React.Component {
             this._stopTransition();
         }
         
-        this.transition_timer = window.setInterval(this._advanceTransition.bind(this), _gridview_params.delays.advance/10);
+        this.transition_timer = window.setInterval(this._advanceTransition.bind(this), _gridview_params.delays.transition);
         this.transition_counter = _gridview_params.max_transition_counter;
     }
     
@@ -138,10 +141,10 @@ class GridView extends React.Component {
         
         let prev_map = undefined;
         if(this.state.current_turn != 0) {
-            prev_map = this._parseTurn(this.state.current_turn - 1).map;
+            prev_map = LogParser.parseTurn(this.turns[this.state.current_turn - 1]).map;
         }
         
-        const map_and_moves = this._parseTurn(this.state.current_turn);
+        const map_and_moves = LogParser.parseTurn(this.turns[this.state.current_turn]);
         const map = map_and_moves.map;
         const grid_params = this._computeGridParams(map);
         
@@ -333,101 +336,10 @@ class GridView extends React.Component {
     
     _createTurns() {
         if(this.props.match != undefined && this.props.match.log != undefined) {
-            this.turns = this.props.match.log.split('.');
+            this.turns = LogParser.separateTurns(this.props.match.log);
             this.reset_store = true;
             this.start_playing = true;
         }
-    }
-    
-    _parseTurn(n) {
-        const str = this.turns[n];
-        
-        return {
-            map: this._parseMap(str),
-            commands: this._parsePlayerCommands(str)
-        };
-    }
-    
-    _parseMap(str) {
-        const map_str = str.split('O')[0];
-        const map_lines = map_str.split('\n');
-        
-        const first_line_idx = map_lines.findIndex((line) => { return line == "W"; }) + 1;
-        const map_height = map_lines.reduce((height, line, index) => {
-            if(index >= first_line_idx) {
-                if(line.length != 0) {
-                    return height + 1;
-                } else {
-                    return height;
-                }
-            } else {
-                return height;
-            }
-        }, 0);
-        
-        const map_width = map_lines[first_line_idx].length;
-        
-        let map = [];
-        for(let i = first_line_idx; i < first_line_idx + map_height; i++) {
-            let line = [];
-            for(let j = 0; j < map_lines[i].length; j++) {
-                switch(map_lines[i][j]) {
-                case '-':
-                    line.push(0);
-                    break;
-                
-                case '1':
-                    line.push(1);
-                    break;
-                
-                case '2':
-                    line.push(2);
-                    break;
-                
-                default:
-                    console.error('ERROR: Unknown symbol encountered during the map parsing!');
-                    line.push(undefined);
-                }
-            }
-            map.push(line);
-        }
-        
-        return map;
-    }
-    
-    _parsePlayerCommands(str) {
-        let result = [[], []];
-        
-        const commands = str.split('\n');
-        let current_player = -1;
-        commands.forEach((cmd) => {
-            let tokens = cmd.split(' ').reduce((acc, token) => {
-                if(token != "") {
-                    return acc + [token];
-                } else {
-                    return acc;
-                }
-            }, []);
-            
-            switch(tokens[0]) {
-            case 'O':
-                current_player = Number.parseInt(tokens[1]);
-                break;
-            
-            case 'C':
-                if(current_player != -1) {
-                    result[current_player - 1].push({
-                        x: Number.parseInt(tokens[1]),
-                        y: Number.parseInt(tokens[2])
-                    });
-                }
-                break;
-            
-            default:
-            }
-        });
-        
-        return result;
     }
     
     _onKeyUp(event) {
