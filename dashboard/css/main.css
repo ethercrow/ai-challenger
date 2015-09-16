@@ -148,6 +148,10 @@ body {
     border-right  : none;
 }
 
+.clickable_cell {
+    cursor : pointer;
+}
+
 .clickable_cell:hover {
     background-color : #030;
 }
@@ -294,6 +298,8 @@ body {
     border-left-style   : solid;
     
     text-align          : center;
+    
+    cursor              : pointer;
 }
 
 .console-window-close-button:hover {
@@ -330,6 +336,8 @@ body {
     border-right-color : #393;
     border-right-width : .1rem;
     border-right-style : solid;
+    
+    cursor             : pointer;
 }
 
 #progress-bar {
@@ -338,6 +346,18 @@ body {
     left               : 2.1rem;
     width              : calc(100% - 7.2rem);
     height             : 1.9rem;
+    
+    cursor             : grab;
+    cursor             : -webkit-grab;
+    cursor             : -moz-grab;
+    cursor             : -o-grab;
+}
+
+#progress-bar.cursor_drag_in_progress {
+    cursor : grabbing;
+    cursor : -webkit-grabbing;
+    cursor : -moz-grabbing;
+    cursor : -o-grabbing;
 }
 
 #turns-counter {

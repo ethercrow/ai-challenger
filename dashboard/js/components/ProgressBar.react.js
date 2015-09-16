@@ -6,8 +6,6 @@ class ProgressBar extends React.Component {
     constructor(props) {
         super(props);
         
-        this.cursor_drag_in_progress = false;
-        
         this.state = this._resolveState();
         this._onChange = this._onChange.bind(this);
     }
@@ -26,12 +24,21 @@ class ProgressBar extends React.Component {
     }
     
     render() {
-        return (
-            <canvas id="progress-bar" width="600" height="50" 
-                onMouseDown={this._onMouseDown.bind(this)}
-                onMouseMove={this._onMouseMove.bind(this)}
-                onMouseUp={this._onMouseUp.bind(this)}></canvas>
-        );
+        if(this.state.cursor_drag_in_progress) {
+            return (
+                <canvas id="progress-bar" className="cursor_drag_in_progress" width="600" height="50" 
+                    onMouseDown={this._onMouseDown.bind(this)}
+                    onMouseMove={this._onMouseMove.bind(this)}
+                    onMouseUp={this._onMouseUp.bind(this)}></canvas>
+            );
+        } else {
+            return (
+                <canvas id="progress-bar" width="600" height="50" 
+                    onMouseDown={this._onMouseDown.bind(this)}
+                    onMouseMove={this._onMouseMove.bind(this)}
+                    onMouseUp={this._onMouseUp.bind(this)}></canvas>
+            );
+        }
     }
     
     _onMouseDown(event) {
@@ -41,11 +48,11 @@ class ProgressBar extends React.Component {
             ControlPanelActions.changeTurn(Math.floor((pos.x - 10)*this.state.max_turns/580));
         }
         
-        this.cursor_drag_in_progress = true;
+        this.setState({ cursor_drag_in_progress: true });
     }
     
     _onMouseMove(event) {
-        if(this.cursor_drag_in_progress) {
+        if(this.state.cursor_drag_in_progress) {
             const pos = this._getMousePos(event);
         
             if(pos.x >= 10 && pos.x <= 590) {
@@ -55,7 +62,7 @@ class ProgressBar extends React.Component {
     }
     
     _onMouseUp(event) {
-        this.cursor_drag_in_progress = false;
+        this.setState({ cursor_drag_in_progress: false });
     }
     
     _getMousePos(event) {
@@ -91,7 +98,8 @@ class ProgressBar extends React.Component {
     _resolveState() {
         return {
             current_turn: ControlPanelStore.getCurrentTurn(),
-            max_turns: ControlPanelStore.getMaxTurns()
+            max_turns: ControlPanelStore.getMaxTurns(),
+            cursor_drag_in_progress: this.state?this.state.cursor_drag_in_progress:false
         };
     }
     
