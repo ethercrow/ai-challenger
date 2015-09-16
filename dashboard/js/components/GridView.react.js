@@ -79,7 +79,7 @@ class GridView extends React.Component {
         if(this._isLogReady() && this.state.current_turn < this.turns.length - 2) {
             ControlPanelActions.changeTurn(this.state.current_turn + 1);
         } else {
-            if(this.state.current_turn = this.turns.length - 1 && this.state.playing) {
+            if(this.state.current_turn == this.turns.length - 1 && this.state.playing) {
                 ControlPanelActions.stopPlaying();
             }
         }
