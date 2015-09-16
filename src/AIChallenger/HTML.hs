@@ -3,52 +3,21 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module AIChallenger.HTML
-    ( MatchPage (..)
-    , MainPage (..)
+    ( MainPage (..)
     ) where
 
-import Control.Monad (forM_)
 import Data.List (sort)
 import Data.Monoid
 import Lucid
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
 import qualified Data.Vector as V
 
 import AIChallenger.Types
 
-data MatchPage = MatchPage
-    { mpResult :: Match
-    , mpReplayText :: TL.Text
-    }
-
 newtype MainPage = MainPage ServerState
 
-instance ToHtml MatchPage where
-    toHtml (MatchPage (Match (MatchId mid) _tournamentId bots winners gameover _) replayText) =
-        doctypehtml_ $ do
-            p_ (toHtml ("Match #" <> show mid))
-            p_ "Bots:"
-            ul_ $ foldMap (li_ . botWidget) bots
-            p_ "Winners:"
-            ul_ $ foldMap (li_ . botWidget) winners
-            span_ "Game over type: "
-            case gameover of
-                Elimination -> "elimination"
-                TurnLimit -> "turn limit"
-                Disqualification faults -> do
-                    p_ "Disqualification"
-                    table_ $ do
-                        tr_ (foldMap th_ ["Bot", "Fault"])
-                        forM_ faults $ \(pid, fs) -> do
-                            th_ (toHtml (show pid))
-                            foldMap (th_ . toHtml . show) fs
-            p_ "Replay:"
-            pre_ (toHtml replayText)
-    toHtmlRaw = toHtml
-
 instance ToHtml MainPage where
-    toHtml (MainPage (ServerState _ _ bots matches)) =
+    toHtml (MainPage (ServerState _ _ bots matches _tournaments)) =
         doctypehtml_ $ do
             h1_ "Welcome!"
             h2_ "Bots"

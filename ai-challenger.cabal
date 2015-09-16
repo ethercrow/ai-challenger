@@ -22,6 +22,7 @@ library
     , deepseq
     , deepseq-generics
     , directory
+    , either
     , ekg
     , extra
     , lucid

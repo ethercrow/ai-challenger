@@ -18,6 +18,7 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan.Unagi
 import Control.Monad
 import Control.Monad.Trans
+import Control.Monad.Trans.Either
 import qualified Data.Aeson as A
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BSL
@@ -51,14 +52,18 @@ type WebAPI
     = Get '[HTML] MainPage
     :<|> "state" :> Get '[JSON] ServerState
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
-    :<|> "launch-round-robin-tournament" :> Post '[PlainText] LaunchTournamentReply
-    :<|> "launch-training" :> Capture "botName" T.Text :> Post '[PlainText] LaunchTournamentReply
-    :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+
+    :<|> "launch-round-robin-tournament" :> Post '[JSON] Tournament
+    :<|> "launch-training" :> Capture "botName" T.Text :> Post '[JSON] Tournament
+
+    :<|> "match" :> Capture "matchId" MatchId :> Get '[JSON] Match
     :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
+
     :<|> "dashboard" :> Raw
     :<|> "css" :> Raw
     :<|> "images" :> Raw
     :<|> "js" :> Raw
+
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> WaiMetrics -> Path Abs Dir -> Wai.Application
@@ -94,24 +99,25 @@ httpApp game stateVar waiMetrics dashboardDir = do
         middleware = [metrics waiMetrics, logStdout, simpleCors]
     foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
 
-postBot :: MonadIO m => StateVar -> Bot -> m Bot
+postBot :: StateVar -> Bot -> EitherT ServantErr IO Bot
 postBot stateVar bot = do
     liftIO (putStrLn ("Adding bot: " <> show bot))
     newBotOrError <- addBot bot stateVar
     case newBotOrError of
         Right newBot -> return newBot
-        Left err -> error err
+        Left err -> left err400 { errReasonPhrase = err }
 
-launchRoundRobinTournament :: (Game game, MonadIO m) => game -> StateVar -> m LaunchTournamentReply
+launchRoundRobinTournament :: Game game => game -> StateVar -> EitherT ServantErr IO Tournament
 launchRoundRobinTournament game stateVar = do
     launchTournament stateVar RoundRobin (launchBotsAndSimulateMatch game turnLimit)
 
-launchTraining :: (Game game, MonadIO m) => game -> StateVar -> BotName -> m LaunchTournamentReply
+launchTraining :: Game game => game -> StateVar -> BotName -> EitherT ServantErr IO Tournament
 launchTraining game stateVar name = do
     launchTournament stateVar (Training name) (launchBotsAndSimulateMatch game turnLimit)
 
-launchTournament :: MonadIO m => StateVar -> TournamentKind ->
-     (V.Vector Bot -> TournamentId -> MatchId -> IO Match) -> m LaunchTournamentReply
+launchTournament :: StateVar -> TournamentKind ->
+     (V.Vector Bot -> TournamentId -> MatchId -> IO Match)
+     -> EitherT ServantErr IO Tournament
 launchTournament stateVar tournamentKind play = do
     bots <- ssBots <$> readStateVar stateVar
     let pairs = case tournamentKind of 
@@ -119,31 +125,27 @@ launchTournament stateVar tournamentKind play = do
             Training name ->
                 let myBot = V.head (V.filter ((== name) . botName) bots)
                 in [V.fromList [myBot, other] | other <- bots, myBot /= other]
-    let roundCount = length pairs
-    if roundCount < 1
-    then error "Not enough bots for a tournament"
+    let matchCount = length pairs
+    if matchCount < 1
+    then left err400 { errReasonPhrase = "Not enough bots for a tournament" }
     else do
-        matchIds <- replicateM roundCount (takeNextMatchId stateVar)
-        tournamentId <- takeNextTournamentId stateVar
+        tournament@(Tournament tid _ mids) <- mkTournament stateVar tournamentKind matchCount
         _ <- liftIO . forkIO $ do
-            putStrLn (show tournamentId <> " started")
-            forM_ (zip matchIds (V.toList pairs)) $ \(mId, pair) -> do
-                result <- play pair tournamentId mId
+            putStrLn (show tid <> " started")
+            forM_ (V.zip mids pairs) $ \(mId, pair) -> do
+                result <- play pair tid mId
                 putStrLn ("Finished " <> show mId)
-                _ <- modifyStateVar stateVar (AddMatch result)
-                return ()
-            putStrLn (show tournamentId <> " finished")
-        return (LaunchTournamentReply (show roundCount <> " matches scheduled"))
+                void $ addMatch stateVar result
+            putStrLn (show tid <> " finished")
+        return tournament
 
-match :: MonadIO m => StateVar -> MatchId -> m MatchPage
+match :: MonadIO m => StateVar -> MatchId -> m Match
 match stateVar mid = do
     matches <- ssMatches <$> readStateVar stateVar
     -- TODO: better than O(n) lookup
     case V.filter ((== mid) . matchId) matches of
         [] -> error ("no match with " <> show mid)
-        [m] -> do
-            replayText <- liftIO (TLIO.readFile (toFilePath (matchReplayPath m)))
-            return (MatchPage m replayText)
+        [m] -> return m
         _ -> error "match id collision, this should never happen"
 
 replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
@@ -159,7 +161,7 @@ replay stateVar mid = do
 mainPage :: MonadIO m => StateVar -> m MainPage
 mainPage stateVar = MainPage <$> readStateVar stateVar
 
-help :: Monad m => m APIDocs
+help :: EitherT ServantErr IO APIDocs
 help = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy WebAPI)))))
 
 newtype APIDocs = APIDocs TL.Text
@@ -196,7 +198,27 @@ instance ToSample ServerState ServerState where
         scarlett <- Bot "Scarlett" . ExecutableBot <$> parseAbsFile "/tmp/scarlett.py"
         let bots = [rocky, pepper, scarlett]
             matches = mempty
-        return (ServerState (MatchId (V.length matches)) (TournamentId 0) bots matches)
+            tournaments = mempty
+        return (ServerState (MatchId (V.length matches)) (TournamentId 0) bots matches tournaments)
+
+instance ToSample Match Match where
+    toSample _ = do
+        bots <-
+            (\b1 b2 -> pure b1 <> pure b2)
+            <$> (toSample (Proxy :: Proxy Bot))
+            <*> (toSample (Proxy :: Proxy Bot))
+        replayPath <- parseAbsFile "/tmp/0.replay"
+        let winners = V.take 1 bots
+        return (Match
+            (MatchId 0)
+            (TournamentId 0)
+            bots
+            winners
+            Elimination
+            replayPath)
+
+instance ToSample Tournament Tournament where
+    toSample _ = Just (Tournament (TournamentId 0) RoundRobin (pure (MatchId 0)))
 
 instance ToSample Bot Bot where
     toSample _ = Bot "Randy" . ExecutableBot <$> parseAbsFile "/home/randy/src/shiny_metal_bot.sh"
@@ -204,11 +226,11 @@ instance ToSample Bot Bot where
 instance ToSample MainPage MainPage where
     toSample _ = MainPage <$> toSample (Proxy :: Proxy ServerState)
 
-instance ToSample MatchPage MatchPage where
-    toSample _ = Nothing
-
 instance ToCapture (Capture "matchId" MatchId) where
     toCapture _ = DocCapture "matchId" "Integer id of the match"
+
+instance ToCapture (Capture "tournamentId" TournamentId) where
+    toCapture _ = DocCapture "tournamentId" "Integer id of the tournament"
 
 instance ToCapture (Capture "botName" T.Text) where
     toCapture _ = DocCapture "botName" "Name of the bot that will play against all other bots"

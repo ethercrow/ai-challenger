@@ -42,13 +42,13 @@ newtype TournamentId = TournamentId Int
     deriving (Eq, Ord, Show, A.ToJSON, NFData, FromText)
 
 data TournamentKind = RoundRobin | Training !BotName
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Generic)
 
 data Tournament = Tournament
     { tId :: !TournamentId
     , tKind :: !TournamentKind
-    , tSize :: !Int
-    }
+    , tMatchIds :: !(V.Vector MatchId)
+    } deriving (Eq, Show, Generic)
 
 data Match = Match
     { matchId :: !MatchId
@@ -64,6 +64,7 @@ data ServerState = ServerState
     , ssNextTournamentId :: !TournamentId
     , ssBots :: !(V.Vector Bot)
     , ssMatches :: !(V.Vector Match)
+    , ssTournaments :: !(V.Vector Tournament)
     } deriving (Show, Generic)
 
 instance NFData (Path a b) where
@@ -76,6 +77,12 @@ instance NFData BotCommunication where
     rnf = genericRnf
 
 instance NFData Match where
+    rnf = genericRnf
+
+instance NFData TournamentKind where
+    rnf = genericRnf
+
+instance NFData Tournament where
     rnf = genericRnf
 
 instance NFData ServerState where
@@ -106,10 +113,15 @@ instance A.ToJSON ServerState
 
 instance A.ToJSON Match
 
+instance A.ToJSON Tournament
+
+instance A.ToJSON TournamentKind
+
 data ServerStateUpdate
     = AddBot Bot
     | RemoveBot Bot
     | AddMatch Match
+    | AddTournament Tournament
     deriving Generic
 
 newtype Turn = Turn Int
@@ -119,7 +131,7 @@ newtype Fault = Fault T.Text
     deriving (Show, Generic, Eq)
 
 newtype PlayerId = PlayerId Int
-    deriving (Show, Eq, Ord, Generic)
+    deriving (Show, Eq, Ord, Generic, A.ToJSON)
 
 -- 'Map k v' doesn't have ToJSON/FromJSON, so it's easier to use vector.
 -- It's not like we have lots of players in a single match.
@@ -132,8 +144,6 @@ data GameOverType
     deriving (Show, Generic, Eq)
 
 instance A.ToJSON GameOverType
-
-instance A.ToJSON PlayerId
 
 instance A.ToJSON Fault
 

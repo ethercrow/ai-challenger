@@ -2,10 +2,9 @@ module AIChallenger.StateVar
     ( StateVar
     , addBot
     , readStateVar
-    , takeNextMatchId
-    , takeNextTournamentId
+    , mkTournament
     , mkStateVar
-    , modifyStateVar
+    , addMatch
     , subscribeToStateUpdates
     ) where
 
@@ -51,6 +50,9 @@ addBot bot (StateVar var chan) = do
             writeChan chan u
             return $!! (newValue, Right bot)
 
+addMatch :: MonadIO m => StateVar -> Match -> m ServerState
+addMatch stateVar m = modifyStateVar stateVar (AddMatch m)
+
 modifyStateVar :: MonadIO m => StateVar -> ServerStateUpdate -> m ServerState
 modifyStateVar (StateVar var chan) u =
     liftIO . modifyMVar var $ \value ->
@@ -61,8 +63,26 @@ modifyStateVar (StateVar var chan) u =
 
 mkStateVar :: MonadIO m => m StateVar
 mkStateVar = StateVar
-    <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty))
+    <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty mempty))
     <*> (fst <$> liftIO newChan)
+
+mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> m Tournament
+mkTournament (StateVar var chan) tournamentKind matchCount = do
+    liftIO . modifyMVar var $ \value ->
+        let tid@(TournamentId t) = ssNextTournamentId value
+            MatchId m = ssNextMatchId value
+            mids = V.fromList (fmap MatchId [m .. m + matchCount - 1])
+            newTournament = Tournament tid tournamentKind mids
+            u = AddTournament newTournament
+            newValue = value
+                { ssNextTournamentId = TournamentId (t + 1)
+                , ssNextMatchId = MatchId (m + matchCount)
+                , ssTournaments = pure newTournament <> ssTournaments value
+                }
+        in newValue `deepseq` (do
+            writeChan chan u
+            return $! (newValue, newTournament)
+            )
 
 applyServerStateUpdate :: ServerStateUpdate -> ServerState -> ServerState
 applyServerStateUpdate (AddBot bot) ss =

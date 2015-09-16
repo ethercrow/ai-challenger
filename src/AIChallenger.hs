@@ -31,7 +31,7 @@ startJudge game config = do
             [ Bot (T.pack (toFilePath (filename exe))) (ExecutableBot exe)
             | exe <- cfgBotExecutables config
             ]
-    mapM_ (modifyStateVar stateVar . AddBot) bots
+    mapM_ (\bot -> addBot bot stateVar) bots
     selfPath <- parseAbsFile =<< getExecutablePath
     let dashboardDir = parent selfPath </> $(mkRelDir "dashboard")
         settings = Warp.defaultSettings
