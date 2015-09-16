@@ -46,11 +46,15 @@ class MatchViewer extends React.Component {
                 bot_name2: AppStore.getBots()[AppStore.getMatchWindowMatch().contesters[1]]
             };
         } else {
-            return {
-                match: undefined,
-                bot_name1: '',
-                bot_name2: ''
-            };
+            if(this.state) {
+                return this.state;
+            } else {
+                return {
+                    match: undefined,
+                    bot_name1: '',
+                    bot_name2: ''
+                };
+            }
         }
     }
     
