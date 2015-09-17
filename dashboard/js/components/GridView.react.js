@@ -199,8 +199,6 @@ class GridView extends React.Component {
         context.strokeStyle = "green";
         context.lineWidth = grid_params.separator_width;
         
-        let grid_path = new Path2D();
-        
         context.save();
         
         context.beginPath();

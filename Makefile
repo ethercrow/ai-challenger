@@ -15,7 +15,7 @@ release: backend frontend
 	cp -r dashboard/images pkgroot/dashboard
 	cp -r dashboard/css pkgroot/dashboard
 	cp dashboard/js/bundle.min.js pkgroot/dashboard/js/bundle.min.js
-	cp `stack path --local-install-root`/bin/ai-challenger-grid pkgroot/ai-challenger-grid
+	cp "`stack path --local-install-root`/bin/ai-challenger-grid" pkgroot/ai-challenger-grid
 	mv pkgroot ai-challenger-grid
 	tar czvf ai-challenger-grid_`uname -sm | sed "s/ /_/g"`.tar.gz ai-challenger-grid
 

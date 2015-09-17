@@ -181,10 +181,10 @@ body {
 }
 
 .console-window-enter.console-window-enter-active {
-    animation         : open-win 1s linear;
-    -webkit-animation : open-win 1s linear;
-    -moz-animation    : open-win 1s linear;
-    -o-animation      : open-win 1s linear;
+    animation         : open-win 0.2s linear;
+    -webkit-animation : open-win 0.2s linear;
+    -moz-animation    : open-win 0.2s linear;
+    -o-animation      : open-win 0.2s linear;
 }
 
 @keyframes open-win {
@@ -227,10 +227,10 @@ body {
 }
 
 .console-window-leave.console-window-leave-active {
-    animation         : close-win 1s linear;
-    -webkit-animation : close-win 1s linear;
-    -moz-animation    : close-win 1s linear;
-    -o-animation      : close-win 1s linear;
+    animation         : close-win 0.2s linear;
+    -webkit-animation : close-win 0.2s linear;
+    -moz-animation    : close-win 0.2s linear;
+    -o-animation      : close-win 0.2s linear;
 }
 
 @keyframes close-win {

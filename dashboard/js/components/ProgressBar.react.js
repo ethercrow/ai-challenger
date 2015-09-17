@@ -83,16 +83,18 @@ class ProgressBar extends React.Component {
         context.strokeStyle = "green";
         context.lineWidth = 2;
     
-        let baseline = new Path2D();
-        baseline.moveTo(10, 25);
-        baseline.lineTo(590, 25);
-        context.stroke(baseline);
+        context.beginPath();
+        context.moveTo(10, 25);
+        context.lineTo(590, 25);
+        context.stroke();
+        context.closePath();
     
         const cursor_x = (this.state.max_turns != 0)?(580*(this.state.current_turn))/(this.state.max_turns - 1):0;
-        let cursor = new Path2D();
-        cursor.moveTo(10 + cursor_x, 5);
-        cursor.lineTo(10 + cursor_x, 45);
-        context.stroke(cursor);
+        context.beginPath();
+        context.moveTo(10 + cursor_x, 5);
+        context.lineTo(10 + cursor_x, 45);
+        context.stroke();
+        context.closePath();
     }
     
     _resolveState() {
