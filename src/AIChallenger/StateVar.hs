@@ -23,20 +23,6 @@ data StateVar = StateVar (MVar ServerState) (InChan ServerStateUpdate)
 readStateVar :: MonadIO m => StateVar -> m ServerState
 readStateVar (StateVar var _) = liftIO (readMVar var)
 
-takeNextMatchId :: MonadIO m => StateVar -> m MatchId
-takeNextMatchId (StateVar var _) =
-    liftIO . modifyMVar var $ \value ->
-        let mid@(MatchId x) = ssNextMatchId value
-            newValue = value { ssNextMatchId = MatchId (x + 1) }
-        in newValue `deepseq` return $! (newValue, mid)
-
-takeNextTournamentId :: MonadIO m => StateVar -> m TournamentId
-takeNextTournamentId (StateVar var _) =
-    liftIO . modifyMVar var $ \value ->
-        let tid@(TournamentId x) = ssNextTournamentId value
-            newValue = value { ssNextTournamentId = TournamentId (x + 1) }
-        in newValue `deepseq` return $! (newValue, tid)
-
 addBot :: MonadIO m => Bot -> StateVar -> m (Either String Bot)
 addBot bot (StateVar var chan) = do
     let name = botName bot

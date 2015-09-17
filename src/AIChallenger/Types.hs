@@ -128,10 +128,10 @@ newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
 
 newtype Fault = Fault T.Text
-    deriving (Show, Generic, Eq)
+    deriving (Show, Eq, NFData, A.ToJSON)
 
 newtype PlayerId = PlayerId Int
-    deriving (Show, Eq, Ord, Generic, A.ToJSON)
+    deriving (Show, Eq, Ord, A.ToJSON, NFData)
 
 -- 'Map k v' doesn't have ToJSON/FromJSON, so it's easier to use vector.
 -- It's not like we have lots of players in a single match.
@@ -145,17 +145,9 @@ data GameOverType
 
 instance A.ToJSON GameOverType
 
-instance A.ToJSON Fault
-
 instance A.ToJSON ServerStateUpdate
 
-instance NFData Fault where
-    rnf = genericRnf
-
 instance NFData GameOverType where
-    rnf = genericRnf
-
-instance NFData PlayerId where
     rnf = genericRnf
 
 data GameResult game = GameResult
