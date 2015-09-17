@@ -41,4 +41,4 @@ startJudge game config = do
         <> ":" <> show (cfgPort config)
         <> "/dashboard")
     putStrLn "EKG is at http://127.0.0.1:7999"
-    Warp.runSettings settings (webApp game stateVar webMetrics dashboardDir)
+    Warp.runSettings settings (webApp game stateVar (Just webMetrics) dashboardDir)

@@ -57,7 +57,7 @@ data Match = Match
     , matchWinners :: !(V.Vector Bot)
     , matchGameOverType :: !GameOverType
     , matchReplayPath :: !(Path Abs File)
-    } deriving (Show, Generic)
+    } deriving (Eq, Show, Generic)
 
 data ServerState = ServerState
     { ssNextMatchId :: !MatchId
@@ -122,7 +122,7 @@ data ServerStateUpdate
     | RemoveBot Bot
     | AddMatch Match
     | AddTournament Tournament
-    deriving Generic
+    deriving (Eq, Show, Generic)
 
 newtype Turn = Turn Int
     deriving (Show, Eq, Ord)
