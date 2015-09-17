@@ -95,7 +95,14 @@ function _parsePlayerCommands(str) {
 
 export default {
     separateTurns(log) {
-        return log.split('.');
+        return log.split('.').reduce((acc, token) => {
+            if(token.trim().length != 0) {
+                acc.push(token);
+                return acc;
+            } else {
+                return acc;
+            }
+        }, []);
     },
     
     parseTurn(str) {

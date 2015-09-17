@@ -79,10 +79,10 @@ class GridView extends React.Component {
     }
     
     _advanceTurn() {
-        if(this._isLogReady() && this.state.current_turn < this.turns.length - 2) {
+        if(this._isLogReady() && this.state.current_turn < this.turns.length - 1) {
             ControlPanelActions.changeTurn(this.state.current_turn + 1);
         } else {
-            if(this.state.current_turn == this.turns.length - 2 && this.state.playing) {
+            if(this.state.current_turn >= this.turns.length - 1 && this.state.playing) {
                 ControlPanelActions.stopPlaying();
             }
         }
@@ -130,7 +130,7 @@ class GridView extends React.Component {
     
     _drawNormalFrame(context) {
         if(this.reset_store) {
-            ControlPanelActions.reset(this.turns.length - 1);
+            ControlPanelActions.reset(this.turns.length);
             this.reset_store = false;
         }
         
@@ -356,11 +356,11 @@ class GridView extends React.Component {
         case 39:
             // Left arrow
             if(event.shiftKey) {
-                if(this.state.current_turn + 10 <= this.turns.length - 2) {
+                if(this.state.current_turn + 10 <= this.turns.length - 1) {
                     ControlPanelActions.changeTurn(this.state.current_turn + 10);
                 }
             } else {
-                if(this.state.current_turn < this.turns.length - 2) {
+                if(this.state.current_turn < this.turns.length - 1) {
                     ControlPanelActions.changeTurn(this.state.current_turn + 1);
                 }
             }
