@@ -151,6 +151,7 @@ class GridView extends React.Component {
         this._drawGrid(context, map, grid_params);
         this._drawPlayers(context, map, prev_map, grid_params);
         this._drawMoves(context, grid_params, map_and_moves.commands);
+        this._drawPlayersZones(context, grid_params, map);
     }
     
     _computeGridParams(map) {
@@ -160,11 +161,14 @@ class GridView extends React.Component {
             y: 3
         };
         
+        const player_zone_width = Math.floor(this.canvas_width*0.1);
+        const grid_canvas_width = this.canvas_width - 2*player_zone_width;
+        
         const map_width = map[0].length;
         const map_height = map.length;
         
         const cell_max_geom = {
-            width: Math.floor((this.canvas_width - 2*padding.x - map_width*separator_width)/map_width),
+            width: Math.floor((grid_canvas_width - 2*padding.x - map_width*separator_width)/map_width),
             height: Math.floor((this.canvas_height - 2*padding.y - map_height*separator_width)/map_height)
         };
         let cell = { width: 0, height: 0};
@@ -182,12 +186,17 @@ class GridView extends React.Component {
         };
         
         const starting_point = {
-            x: padding.x + Math.floor((this.canvas_width - 2*padding.x - grid.width)/2),
+            x: player_zone_width + padding.x + Math.floor((grid_canvas_width - 2*padding.x - grid.width)/2),
             y: padding.y + Math.floor((this.canvas_height - 2*padding.y - grid.height)/2)
         };
         
         return {
             separator_width: separator_width,
+            
+            player_zone: {
+                width: player_zone_width,
+                height: this.canvas_height
+            },
             
             starting_point: starting_point,
             grid: grid,
@@ -318,6 +327,81 @@ class GridView extends React.Component {
         }
     }
     
+    _drawPlayersZones(context, grid_params, map) {
+        const scores = this._computePlayersScores(map);
+        const max_score = map.length*map[0].length;
+        
+        this._drawPlayerZone(context, 0, scores[0] >= scores[1], scores[0], max_score, 
+                             0, 0, grid_params.player_zone.width, grid_params.player_zone.height);
+        this._drawPlayerZone(context, 1, scores[1] >= scores[0], scores[1], max_score, 
+                             this.canvas_width - grid_params.player_zone.width, 0, 
+                             grid_params.player_zone.width, grid_params.player_zone.height);
+    }
+    
+    _drawPlayerZone(context, player, is_winning, score, max_score, x, y, width, height) {
+        let player_name = 'none';
+        switch(player) {
+        case 0:
+            player_name = this.props.bot1_name;
+            break;
+        
+        case 1:
+            player_name = this.props.bot2_name;
+            break;
+        }
+        
+        this._drawTextBox(context, player_name, x, y + Math.floor(0.8*height), width, Math.floor(0.1*height));
+        this._drawTextBox(context, score, x, y + Math.floor(0.9*height), width, Math.floor(0.1*height));
+        
+        context.strokeStyle = _gridview_params.player_colors[player];
+        context.fillStyle = _gridview_params.player_colors[player];
+        context.lineWidth = 3;
+        
+        context.beginPath();
+        context.moveTo(x + 3, y + Math.floor(0.8*height) - 3);
+        context.lineTo(x + width - 6, y + Math.floor(0.8*height) - 3);
+        context.stroke();
+        context.closePath();
+        
+        const column_max_height = Math.floor(0.6*height);
+        const column_height = Math.floor(score*column_max_height/max_score);
+        context.fillRect(x + 6, y + Math.floor(0.8*height) - 3 - column_height, width - 15, column_height);
+        
+        this._drawPlayerFace(context, is_winning, x + 6, y + Math.floor(0.8*height) - 3 - column_height - Math.floor(0.1*height), 
+                             width - 15, Math.floor(0.1*height));
+    }
+    
+    _drawPlayerFace(context, is_winning, x, y, width, height) {
+        const radius = (width , height)?Math.floor(width/2):Math.floor(height/2);
+        
+        context.beginPath();
+        context.arc(x + width - radius, y + height - radius, radius, 0, 2*Math.PI, true);
+        context.stroke();
+        context.closePath();
+        
+        context.beginPath();
+        context.arc(x + width - 0.70*2*radius, y + height - 0.65*2*radius, 0.15*radius, 0, 2*Math.PI, true);
+        context.fill();
+        context.closePath();
+        
+        context.beginPath();
+        context.arc(x + width - 0.30*2*radius, y + height - 0.65*2*radius, 0.15*radius, 0, 2*Math.PI, true);
+        context.fill();
+        context.closePath();
+        
+        if(is_winning) {
+            context.beginPath();
+            context.arc(x + width - radius, y + height - 0.65*2*radius, 0.9*radius, 3/4*Math.PI, 1/4*Math.PI, true);
+            context.stroke();
+            context.closePath();
+        } else {
+            context.beginPath();
+            context.arc(x + width - radius, y + height + 0.3*radius, 0.9*radius, 7/4*Math.PI, 5/4*Math.PI, true);
+            context.stroke();
+            context.closePath();
+        }
+    }
+    
     _drawTextBox(context, text, x, y, width, height) {
         context.fillStyle = "green";
         context.font = '48px monospace';
@@ -326,6 +410,26 @@ class GridView extends React.Component {
         
         const text_data = context.measureText(text);
         context.fillText(text, x + (width - text_data.width)/2, y + height/2, text_data.width);
+    }
+    
+    _computePlayersScores(map) {
+        let result = [0, 0];
+        
+        for(let x = 0; x < map[0].length; x++) {
+            for(let y = 0; y < map.length; y++) {
+                switch(map[y][x]) {
+                case 1:
+                    result[0] += 1;
+                    break;
+                
+                case 2:
+                    result[1] += 1;
+                    break;
+                }
+            }
+        }
+        
+        return result;
     }
     
     _isLogReady() {
