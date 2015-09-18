@@ -1,7 +1,8 @@
 function _tokenize(str) {
     return str.split(' ').reduce((acc, token) => {
-        if(token != "") {
-            return acc + [token];
+        if(token.trim().length != 0) {
+            acc.push(token);
+            return acc;
         } else {
             return acc;
         }
@@ -55,8 +56,8 @@ function _parseMap(str) {
             break;
         
         default:
-            if(parse_map && _isMapLine(tokens)) {
-                map.push(_parseMapLine(tokens));
+            if(parse_map && _isMapLine(tokens[0])) {
+                map.push(_parseMapLine(tokens[0]));
             }
         }
     });
