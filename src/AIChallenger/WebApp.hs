@@ -15,7 +15,6 @@ module AIChallenger.WebApp
     ) where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan.Unagi
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Either

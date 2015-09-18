@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Concurrent.Chan.Unagi
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Aeson as A
@@ -20,7 +19,7 @@ import System.Directory
 import System.IO.Unsafe
 import System.Mem
 
-import AIChallenger.StateVar (mkStateVar, subscribeToStateUpdates)
+import AIChallenger.StateVar (mkStateVar, subscribeToStateUpdates, readChan, OutChan)
 import AIChallenger.Types
 import AIChallenger.WebApp (webApp)
 import qualified Grid

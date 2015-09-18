@@ -1,5 +1,7 @@
 module AIChallenger.StateVar
     ( StateVar
+    , OutChan
+    , readChan
     , addBot
     , readStateVar
     , mkTournament
@@ -9,7 +11,7 @@ module AIChallenger.StateVar
     ) where
 
 import Control.Concurrent.MVar
-import Control.Concurrent.Chan.Unagi
+import qualified Control.Concurrent.Chan as Chan
 import Control.Monad.IO.Class
 import Control.DeepSeq
 import qualified Data.Text as T
@@ -18,7 +20,12 @@ import Data.Monoid
 
 import AIChallenger.Types
 
-data StateVar = StateVar (MVar ServerState) (InChan ServerStateUpdate)
+data StateVar = StateVar (MVar ServerState) (Chan.Chan ServerStateUpdate)
+
+newtype OutChan a = OutChan (Chan.Chan a)
+
+readChan :: OutChan a -> IO a
+readChan (OutChan c) = Chan.readChan c
 
 readStateVar :: MonadIO m => StateVar -> m ServerState
 readStateVar (StateVar var _) = liftIO (readMVar var)
@@ -33,7 +40,7 @@ addBot bot (StateVar var chan) = do
         else do
             let u = AddBot bot
                 newValue = applyServerStateUpdate u value
-            writeChan chan u
+            Chan.writeChan chan u
             return $!! (newValue, Right bot)
 
 addMatch :: MonadIO m => StateVar -> Match -> m ServerState
@@ -44,13 +51,13 @@ modifyStateVar (StateVar var chan) u =
     liftIO . modifyMVar var $ \value ->
         let newValue = applyServerStateUpdate u value
         in newValue `deepseq` (do
-            writeChan chan u
+            Chan.writeChan chan u
             return $! (newValue, newValue))
 
 mkStateVar :: MonadIO m => m StateVar
 mkStateVar = StateVar
     <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty mempty))
-    <*> (fst <$> liftIO newChan)
+    <*> liftIO Chan.newChan
 
 mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> m Tournament
 mkTournament (StateVar var chan) tournamentKind matchCount = do
@@ -66,7 +73,7 @@ mkTournament (StateVar var chan) tournamentKind matchCount = do
                 , ssTournaments = pure newTournament <> ssTournaments value
                 }
         in newValue `deepseq` (do
-            writeChan chan u
+            Chan.writeChan chan u
             return $! (newValue, newTournament)
             )
 
@@ -81,5 +88,5 @@ applyServerStateUpdate (AddMatch match) ss =
 subscribeToStateUpdates :: StateVar -> IO (ServerState, OutChan ServerStateUpdate)
 subscribeToStateUpdates (StateVar stateVar chan) =
     withMVar stateVar $ \state -> do
-        outChan <- dupChan chan
-        return (state, outChan)
+        outChan <- Chan.dupChan chan
+        return (state, OutChan outChan)

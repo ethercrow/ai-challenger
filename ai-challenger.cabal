@@ -40,7 +40,6 @@ library
     , servant-server >= 0.4.2
     , text >= 1.2
     , transformers
-    , unagi-chan
     , vector
     , wai
     , wai-cors
@@ -134,6 +133,5 @@ Test-Suite GridTest
     , tasty-hunit
     , tasty-th
     , transformers
-    , unagi-chan
     , wai
     , wai-extra
