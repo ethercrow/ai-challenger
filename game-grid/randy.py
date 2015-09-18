@@ -7,7 +7,7 @@ def main():
     with open('/tmp/randy.log', 'w') as logfile:
         log = lambda line: logfile.write(line + '\n')
 
-        for _ in range(101):
+        for _ in range(201):
             id_line = sys.stdin.readline().rstrip().split(' ')
             assert id_line[0] == 'Y'
             my_id = id_line[1]

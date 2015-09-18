@@ -46,7 +46,7 @@ import AIChallenger.StateVar
 import AIChallenger.Types
 
 turnLimit :: Turn
-turnLimit = Turn 100
+turnLimit = Turn 200
 
 type WebAPI
     = Get '[HTML] MainPage

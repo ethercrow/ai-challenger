@@ -168,5 +168,5 @@ case_40_player_tournament = test $ \updates -> do
         putStrLn ("  Maximum residency, MiB: " <> show (maxResidency `div` (1024 * 1024)))
         putStrLn "------------------------"
 
-        assertBool "Too much CPU spent" (cpuSpent < 30)
+        assertBool "Too much CPU spent" (cpuSpent < 60)
         assertBool "Unacceptable max memory residency" (maxResidency < 10 * 1024 * 1024)
