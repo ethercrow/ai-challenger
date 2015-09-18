@@ -15,11 +15,11 @@ module AIChallenger.WebApp
     ) where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan.Unagi
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Either
 import qualified Data.Aeson as A
+import Data.Maybe
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.Text as T
@@ -46,7 +46,7 @@ import AIChallenger.StateVar
 import AIChallenger.Types
 
 turnLimit :: Turn
-turnLimit = Turn 100
+turnLimit = Turn 200
 
 type WebAPI
     = Get '[HTML] MainPage
@@ -66,7 +66,7 @@ type WebAPI
 
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
-webApp :: Game game => game -> StateVar -> WaiMetrics -> Path Abs Dir -> Wai.Application
+webApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
 webApp game stateVar waiMetrics dashboardDir =
     websocketsOr defaultConnectionOptions
         (wsApp stateVar)
@@ -81,7 +81,7 @@ wsApp stateVar pendingConnection = do
         update <- readChan chan
         sendDataMessage conn (Binary (A.encode update))
 
-httpApp :: Game game => game -> StateVar -> WaiMetrics -> Path Abs Dir -> Wai.Application
+httpApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
 httpApp game stateVar waiMetrics dashboardDir = do
     let handlers = mainPage stateVar
             :<|> readStateVar stateVar
@@ -96,7 +96,7 @@ httpApp game stateVar waiMetrics dashboardDir = do
             :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "js")))
             :<|> help
     let middleware :: [Wai.Application -> Wai.Application]
-        middleware = [metrics waiMetrics, logStdout, simpleCors]
+        middleware = catMaybes [metrics <$> waiMetrics, Just logStdout, Just simpleCors]
     foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
 
 postBot :: StateVar -> Bot -> EitherT ServantErr IO Bot

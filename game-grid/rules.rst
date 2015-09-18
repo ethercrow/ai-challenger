@@ -60,21 +60,23 @@ Example of reading a judge message in Python::
 Energy budget
 ~~~~~~~~~~~~~
 
-Energy budget for player N is calculated as a number of empty tiles that have
-strictly more neighbor tiles captured by player N than by the other player. For
-energy budget calculations neighbor relationship is defined as sharing at least
-a point. That means that non-edge tiles have 8 neighbors.
+Energy budget for player P is calculated as 1 plus one third of N (rounded up).
+
+N is a number of empty tiles that have strictly more neighbor tiles captured by
+player P than by the other player. For energy budget calculations neighbor
+relationship is defined as sharing at least one side. That means that non-edge
+tiles have 4 neighbors.
 
 In these examples a center tile contributes to energy budget of player 1::
 
-  1--  -12
-  ---  ---
-  ---  112
+  -1-  -1-
+  ---  --2
+  ---  -1-
 
 In these examples a center tile doesn't give energy to either player::
 
-  12- 121 ---
-  --- 2-2 ---
+  1-2 112 ---
+  --- 1-2 ---
   --- 121 ---
 
 Order format
@@ -134,7 +136,7 @@ and all the tiles suffocate the next turn.
 Turn limit
 ~~~~~~~~~~
 
-The player with the most controlled tiles after turn 100 wins. If players
+The player with the most controlled tiles after turn 200 wins. If players
 control equal number of tiles, that match is declared a draw.
 
 Replay format

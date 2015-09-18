@@ -253,7 +253,7 @@ applyOrders (os1, os2) (Grid grid0) = Grid $ V.modify go grid0
 newtype Energy = Energy Int
 
 energyBudget :: Grid -> PlayerId -> Energy
-energyBudget grid pid = Energy $ sum
+energyBudget grid pid = Energy . (+ 1) . (`div` 3) $ sum
     [ 1
     | x <- [0 .. gridSize - 1]
     , y <- [0 .. gridSize - 1]
