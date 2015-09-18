@@ -17,13 +17,13 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Semigroup as S
 import qualified Data.Set as Set
 import qualified Data.Text as T
+import qualified Data.Text.Read as TR
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Vector.Extended as V
 import qualified Data.Vector.Mutable as VM
 import Path
 import System.IO
-import Text.Read (readMaybe)
 
 import AIChallenger.Types
 
@@ -80,12 +80,13 @@ instance Game GridGame where
     type GameOrder GridGame = Order
     type GameReplay GridGame = Replay
     gameInitialState _ = (initialGrid, Replay (pure (initialGrid, mempty, mempty)))
-    gameParseOrder _ s = case T.words s of
-        ["C", tx, ty] -> do
-            x <- readMaybe (T.unpack tx)
-            y <- readMaybe (T.unpack ty)
-            return (Capture (x, y))
-        "S" : _ : _ -> Just (Say (T.drop 2 s))
+    gameParseOrder _ s = case T.splitAt 2 s of
+        ("C ", (T.words -> [tx, ty])) ->
+            case (TR.decimal tx, TR.decimal ty) of
+                (Right (x, ""), Right (y, "")) -> Just (Capture (x, y))
+                _ -> Nothing
+        ("S ", "") -> Nothing
+        ("S ", msg) -> Just (Say msg)
         _ -> Nothing
     gameAdvance _ (oldGrid, oldReplay)
         | Score 0 0 <- gridScore oldGrid
@@ -208,10 +209,10 @@ suffocate grid@(Grid g) =
 neighborhood4 :: Point -> Grid -> [Tile]
 neighborhood4 (x, y) (Grid grid0) =
     let neighborPoints =
-            [ (x + dx, y + dy)
-            | dx <- [-1, 0, 1]
-            , dy <- [-1, 0, 1]
-            , (dx + dy) `elem` [-1, 1]
+            [ (x - 1, y)
+            , (x + 1, y)
+            , (x, y - 1)
+            , (x, y + 1)
             ]
         get (i, j) = (grid0 V.!? j) >>= (V.!? i)
     in mapMaybe get neighborPoints
@@ -219,10 +220,16 @@ neighborhood4 (x, y) (Grid grid0) =
 neighborhood8 :: Point -> Grid -> [Tile]
 neighborhood8 (x, y) (Grid grid0) =
     let neighborPoints =
-            [ (x + dx, y + dy)
-            | dx <- [-1, 0, 1]
-            , dy <- [-1, 0, 1]
-            , (dx, dy) /= (0, 0)
+            [ (x - 1, y - 1)
+            , (x, y - 1)
+            , (x + 1, y - 1)
+
+            , (x - 1, y)
+            , (x + 1, y)
+
+            , (x - 1, y + 1)
+            , (x, y + 1)
+            , (x + 1, y + 1)
             ]
         get (i, j) = (grid0 V.!? j) >>= (V.!? i)
     in mapMaybe get neighborPoints

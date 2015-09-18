@@ -12,9 +12,12 @@ import Options.Applicative.Builder.Internal (HasValue)
 import Path
 import System.Directory
 
+import AIChallenger.Types
+
 data Config = Config
     { cfgPort :: Int
     , cfgAddress :: String
+    , cfgTurnLimit :: Turn
     , cfgBotExecutables :: [Path Abs File]
     }
 
@@ -22,6 +25,7 @@ defaultConfig :: Config
 defaultConfig = Config
     { cfgPort = 8081
     , cfgAddress = "127.0.0.1"
+    , cfgTurnLimit = Turn 200
     , cfgBotExecutables = []
     }
 
@@ -37,6 +41,8 @@ parseConfig parseFileName = Config
         (long "port" <> def "HTTP port" cfgPort)
     <*> strOption
         (long "address" <> def "HTTP address" cfgAddress)
+    <*> fmap Turn (option auto
+            (long "turn-limit" <> def "turn limit" (fromTurn . cfgTurnLimit)))
     <*> fmap (mapMaybe parseFileName) (many (argument str (metavar "BOT_EXECUTABLE")))
 
 def :: (Show a, Options.Applicative.Builder.Internal.HasValue t) => String -> (Config -> a) -> Mod t a

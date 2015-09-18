@@ -124,7 +124,7 @@ data ServerStateUpdate
     | AddTournament Tournament
     deriving (Eq, Show, Generic)
 
-newtype Turn = Turn Int
+newtype Turn = Turn { fromTurn :: Int }
     deriving (Show, Eq, Ord)
 
 newtype Fault = Fault T.Text

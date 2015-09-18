@@ -86,11 +86,11 @@ getOrders game bots = do
                     (botIdent, Left f) -> Just (botIdent, f)
                     _ -> Nothing)
                 unparsedOrdersAndFaults
-        unparsedOrders :: V.Vector (PlayerId, V.Vector T.Text)
-        unparsedOrders =
+        orders :: V.Vector (PlayerId, V.Vector (T.Text, Maybe (GameOrder game)))
+        orders =
             V.mapMaybe
                 (\case
-                    (botIdent, Right ts) -> Just (botIdent, V.fromList ts)
+                    (botIdent, Right ts) -> Just (botIdent, V.fromList (map (\o -> (o, gameParseOrder game o)) ts))
                     _ -> Nothing)
                 unparsedOrdersAndFaults
         badOrders :: V.Vector (PlayerId, NonEmpty Fault)
@@ -99,19 +99,14 @@ getOrders game bots = do
                 (sequence . fmap
                     (\os -> nonEmpty
                         [ Fault ("Failed to parse order " <> t)
-                        | t@(gameParseOrder game -> Nothing) <- V.toList os
+                        | (t, Nothing) <- V.toList os
                         ]))
-                unparsedOrders
+                orders
         goodOrders :: V.Vector (PlayerId, V.Vector (GameOrder game))
         goodOrders =
             fmap
-                (fmap (\os -> 
-                    V.mapMaybe
-                        (\case
-                            (gameParseOrder game -> Just o) -> Just o
-                            _ -> Nothing)
-                        os))
-                unparsedOrders
+                (fmap (V.mapMaybe snd))
+                orders
     if V.null ioFaults && V.null badOrders
     then return (Right goodOrders)
     else return (Left (ioFaults <> badOrders))

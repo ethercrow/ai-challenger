@@ -13,6 +13,7 @@ library
   default-language:    Haskell2010
   hs-source-dirs:      src
   ghc-options: -Wall -ferror-spans -fno-warn-orphans
+  ghc-prof-options: -auto-all -prof
   build-depends:
       base >= 4.7
     , blaze-html
@@ -76,6 +77,7 @@ executable ai-challenger-rps
   hs-source-dirs:      game-rps
   default-language:    Haskell2010
   ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
+  ghc-prof-options: -auto-all -prof
 
 executable ai-challenger-grid
   main-is:             Main.hs
@@ -92,6 +94,7 @@ executable ai-challenger-grid
   hs-source-dirs:      game-grid
   default-language:    Haskell2010
   ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
+  ghc-prof-options: -auto-all -prof
 
 Test-Suite RPSTest
   type: exitcode-stdio-1.0
@@ -100,6 +103,7 @@ Test-Suite RPSTest
       RockPaperScissors
   hs-source-dirs: game-rps, test
   ghc-options: -Wall -ferror-spans
+  ghc-prof-options: -auto-all -prof
   default-language:    Haskell2010
   build-depends:
       base >= 4.8
@@ -117,6 +121,7 @@ Test-Suite GridTest
       Grid
   hs-source-dirs: game-grid, test-grid
   ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
+  ghc-prof-options: -auto-all -prof
   default-language:    Haskell2010
   build-depends:
       base >= 4.8
