@@ -53,8 +53,8 @@ type WebAPI
     :<|> "state" :> Get '[JSON] ServerState
     :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
 
-    :<|> "launch-round-robin-tournament" :> Post '[JSON] Tournament
-    :<|> "launch-training" :> Capture "botName" T.Text :> Post '[JSON] Tournament
+    :<|> "launch-round-robin-tournament" :> Capture "mapName" MapName :> Post '[JSON] Tournament
+    :<|> "launch-training" :> Capture "mapName" MapName :> Capture "botName" T.Text :> Post '[JSON] Tournament
 
     :<|> "match" :> Capture "matchId" MatchId :> Get '[JSON] Match
     :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
@@ -107,18 +107,29 @@ postBot stateVar bot = do
         Right newBot -> return newBot
         Left err -> left err400 { errReasonPhrase = err }
 
-launchRoundRobinTournament :: Game game => game -> StateVar -> EitherT ServantErr IO Tournament
-launchRoundRobinTournament game stateVar = do
-    launchTournament stateVar RoundRobin (launchBotsAndSimulateMatch game turnLimit)
+checkMapName :: Game game => game -> MapName -> EitherT ServantErr IO ()
+checkMapName game mapName@(MapName m) = do
+    availableMaps <- liftIO (gameAvailableMaps game)
+    liftIO $ print availableMaps
+    when (mapName `notElem` availableMaps)
+        (left err404 {
+            errReasonPhrase = "Map " <> T.unpack m <> " is not available"
+            })
 
-launchTraining :: Game game => game -> StateVar -> BotName -> EitherT ServantErr IO Tournament
-launchTraining game stateVar name = do
-    launchTournament stateVar (Training name) (launchBotsAndSimulateMatch game turnLimit)
+launchRoundRobinTournament :: Game game => game -> StateVar -> MapName -> EitherT ServantErr IO Tournament
+launchRoundRobinTournament game stateVar mapName = do
+    checkMapName game mapName
+    launchTournament stateVar RoundRobin mapName (launchBotsAndSimulateMatch game mapName turnLimit)
 
-launchTournament :: StateVar -> TournamentKind ->
+launchTraining :: Game game => game -> StateVar -> MapName -> BotName -> EitherT ServantErr IO Tournament
+launchTraining game stateVar mapName name = do
+    checkMapName game mapName
+    launchTournament stateVar (Training name) mapName (launchBotsAndSimulateMatch game mapName turnLimit)
+
+launchTournament :: StateVar -> TournamentKind -> MapName ->
      (V.Vector Bot -> TournamentId -> MatchId -> IO Match)
      -> EitherT ServantErr IO Tournament
-launchTournament stateVar tournamentKind play = do
+launchTournament stateVar tournamentKind mapName play = do
     bots <- ssBots <$> readStateVar stateVar
     let pairs = case tournamentKind of 
             RoundRobin -> [V.fromList [b1, b2] | b1 <- bots, b2 <- bots, b1 < b2]
@@ -234,6 +245,9 @@ instance ToCapture (Capture "tournamentId" TournamentId) where
 
 instance ToCapture (Capture "botName" T.Text) where
     toCapture _ = DocCapture "botName" "Name of the bot that will play against all other bots"
+
+instance ToCapture (Capture "mapName" MapName) where
+    toCapture _ = DocCapture "mapName" "Name of the map to be used in a tournament"
 
 instance ToSample ServerStateUpdate ServerStateUpdate where
     toSample _ = Nothing

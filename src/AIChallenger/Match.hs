@@ -21,18 +21,19 @@ import System.Timeout
 import AIChallenger.Bot
 import AIChallenger.Types
 
-launchBotsAndSimulateMatch :: Game game => game -> Turn -> V.Vector Bot -> TournamentId -> MatchId -> IO Match
-launchBotsAndSimulateMatch game turnLimit bots tournamentId mid@(MatchId x) = do
+launchBotsAndSimulateMatch :: Game game => game -> MapName -> Turn -> V.Vector Bot -> TournamentId -> MatchId -> IO Match
+launchBotsAndSimulateMatch game mapName turnLimit bots tournamentId mid@(MatchId x) = do
     replayPath <- parseAbsFile ("/tmp/" <> show x <> ".replay")
     let work (Right players) = do
-             GameResult winnerIds gameOver replay <- simulateMatch game turnLimit players
+             GameResult winnerIds gameOver replay <- simulateMatch game mapName turnLimit players
              gameSaveReplay game replayPath replay
              let winnerPlayers = (V.filter ((`elem` winnerIds) . playerId) players)
              let winnerNames = fmap playerName winnerPlayers
                  winnerBots = V.filter ((`elem` winnerNames) .  botName) bots
              return (Match mid tournamentId bots winnerBots gameOver replayPath)
         work (Left (winnerBots, faults)) = do
-             let replay = gameExtractReplay game (gameInitialState game)
+             initialState <- gameInitialState game mapName
+             let replay = gameExtractReplay game initialState
              gameSaveReplay game replayPath replay
              return (Match mid tournamentId bots winnerBots (Disqualification faults) replayPath)
     bracket
@@ -40,9 +41,9 @@ launchBotsAndSimulateMatch game turnLimit bots tournamentId mid@(MatchId x) = do
         (either (const (return ())) (V.mapM_ playerClose))
         work
 
-simulateMatch :: Game game => game -> Turn -> V.Vector Player -> IO (GameResult game)
-simulateMatch game turnLimit bots =
-    go mempty (gameInitialState game)
+simulateMatch :: Game game => game -> MapName -> Turn -> V.Vector Player -> IO (GameResult game)
+simulateMatch game mapName turnLimit bots = do
+    go mempty =<< gameInitialState game mapName
     where
     go turn state | turn >= turnLimit = return (gameTimeout state)
     go turn state = do

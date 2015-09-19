@@ -101,7 +101,7 @@ Test-Suite RPSTest
   main-is: TestMain.hs
   other-modules:
       RockPaperScissors
-  hs-source-dirs: game-rps, test
+  hs-source-dirs: game-rps, test-rps
   ghc-options: -Wall -ferror-spans
   ghc-prof-options: -auto-all -prof
   default-language:    Haskell2010

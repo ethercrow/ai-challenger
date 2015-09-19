@@ -34,8 +34,7 @@ data Player = Player
     }
 
 playerClose :: Player -> IO ()
-playerClose (Player _ name input output shutdown) = do
-    -- print ("playerClose " <> name)
+playerClose (Player _ _ input output shutdown) = do
     catchAll (closeInChannel output)
     catchAll (closeOutChannel input)
     catchAll shutdown

@@ -32,8 +32,13 @@ data GridGame = GridGame
 game :: GridGame
 game = GridGame
 
-gridSize :: Int
-gridSize = 10
+availableMaps :: V.Vector MapName
+availableMaps = V.fromList (fmap MapName ["10x10", "40x40"])
+
+gridSizeForMap :: MapName -> Int
+gridSizeForMap (MapName "10x10") = 10
+gridSizeForMap (MapName "40x40") = 40
+gridSizeForMap (MapName x) = error ("Unexpected map name " <> T.unpack x)
 
 data Score = Score Int Int
 
@@ -55,12 +60,14 @@ data Tile
 
 type Point = (Int, Int)
 
-data Grid = Grid (V.Vector (V.Vector Tile))
+data Grid = Grid { unwrapGrid :: (V.Vector (V.Vector Tile)) }
     deriving (Show, Eq)
+
 data Order
     = Capture Point
     | Say T.Text
     deriving (Show, Eq, Ord)
+
 data Replay = Replay (V.Vector (Grid, V.Vector Order, V.Vector Order))
     deriving (Show, Eq)
 
@@ -68,18 +75,21 @@ instance Monoid Replay where
     mappend (Replay r1) (Replay r2) = Replay (mappend r1 r2)
     mempty = Replay mempty
 
-initialGrid :: Grid
-initialGrid = Grid $ mconcat
-        [ pure (pure (Captured (PlayerId 1)) <> V.replicate (gridSize - 1) Empty)
-        , V.replicate (gridSize - 2) (V.replicate gridSize Empty)
-        , pure (V.replicate (gridSize - 1) Empty <> pure (Captured (PlayerId 2)))
+initialGrid :: Int -> Grid
+initialGrid size = Grid $ mconcat
+        [ pure (pure (Captured (PlayerId 1)) <> V.replicate (size - 1) Empty)
+        , V.replicate (size - 2) (V.replicate size Empty)
+        , pure (V.replicate (size - 1) Empty <> pure (Captured (PlayerId 2)))
         ]
 
 instance Game GridGame where
     type GameState GridGame = (Grid, Replay)
     type GameOrder GridGame = Order
     type GameReplay GridGame = Replay
-    gameInitialState _ = (initialGrid, Replay (pure (initialGrid, mempty, mempty)))
+    gameAvailableMaps _ = return availableMaps
+    gameInitialState _ mapName = do
+        let size = gridSizeForMap mapName
+        return (initialGrid size, Replay (pure (initialGrid size, mempty, mempty)))
     gameParseOrder _ s = case T.splitAt 2 s of
         ("C ", (T.words -> [tx, ty])) ->
             case (TR.decimal tx, TR.decimal ty) of
@@ -160,6 +170,7 @@ validateOrders rawOrders grid =
         in Right (a, b)
     else Left faults
     where
+    gridSize = V.length (unwrapGrid grid)
     faults = V.mapMaybe go rawOrders
     go :: (PlayerId, V.Vector Order) -> Maybe (PlayerId, NE.NonEmpty Fault)
     go (p, os) = case fmap (validateOrder p) os of
@@ -193,7 +204,8 @@ validateOrders rawOrders grid =
 
 suffocate :: Grid -> Grid
 suffocate grid@(Grid g) =
-    let surroundedPoints =
+    let gridSize = V.length g
+        surroundedPoints =
             [ (x, y)
             | x <- [0 .. gridSize - 1]
             , y <- [0 .. gridSize - 1]
@@ -270,3 +282,4 @@ energyBudget grid pid = Energy . (+ 1) . (`div` 3) $ sum
     , let foes = filter (`notElem` [Empty, Captured pid]) ns
     , length friends > length foes
     ]
+    where gridSize = V.length (unwrapGrid grid)

@@ -35,6 +35,9 @@ data BotCommunication
     | TCPBot !Int
     deriving (Show, Generic, Eq)
 
+newtype MapName = MapName T.Text
+    deriving (Show, Eq, Ord, A.ToJSON, NFData, FromText)
+
 newtype MatchId = MatchId Int
     deriving (Show, Eq, Ord, A.ToJSON, NFData, FromText)
 
@@ -167,7 +170,8 @@ class Game game where
     type GameState game
     type GameOrder game
     type GameReplay game
-    gameInitialState :: game -> GameState game
+    gameAvailableMaps :: game -> IO (V.Vector MapName)
+    gameInitialState :: game -> MapName -> IO (GameState game)
     gameParseOrder :: game -> T.Text -> Maybe (GameOrder game)
     gameAdvance :: V.Vector (PlayerId, (V.Vector (GameOrder game))) -> GameState game
         -> Either (GameResult game) (GameState game)

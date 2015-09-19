@@ -37,7 +37,7 @@ reqStartRoundRobinTournament :: Session SResponse
 reqStartRoundRobinTournament = srequest
     (SRequest
         (defaultRequest
-            { pathInfo = ["launch-round-robin-tournament"]
+            { pathInfo = ["launch-round-robin-tournament", "10x10"]
             , requestMethod = "POST"
             , requestHeaders =
                 [ ("Accept", "application/json")

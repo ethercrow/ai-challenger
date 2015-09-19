@@ -44,7 +44,8 @@ instance Game RPS where
     type GameState RPS = (WinCounts, Replay)
     type GameOrder RPS = Order
     type GameReplay RPS = Replay
-    gameInitialState _ = (mempty, mempty)
+    gameAvailableMaps _ = return (V.singleton (MapName "default"))
+    gameInitialState _ _ = return (mempty, mempty)
     gameParseOrder _ "R" = Just R 
     gameParseOrder _ "P" = Just P 
     gameParseOrder _ "S" = Just S 

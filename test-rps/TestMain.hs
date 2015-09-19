@@ -47,7 +47,7 @@ constPlayersTest :: IO ()
 constPlayersTest = do
     rocky <- constPlayer 0 "Rocky" "R"
     pepper <- constPlayer 1 "Pepper" "P"
-    GameResult winners gameover replay <- simulateMatch RPS.game (Turn 3) [rocky, pepper]
+    GameResult winners gameover replay <- simulateMatch RPS.game (MapName "default") (Turn 3) [rocky, pepper]
     True <- return $! winners == V.fromList [PlayerId 2]
     True <- return $! TurnLimit == gameover
     True <- return $! replay == RPS.Replay (V.map (\i -> (RPS.WinCounts 0 i, RPS.R, RPS.P)) [1, 2, 3])
@@ -60,8 +60,9 @@ pythonPlayersTest = do
         pepper = Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
         bots = [rocky, pepper]
     Match (MatchId 0) (TournamentId 0) bots' winners gameover replayPath <-
-        launchBotsAndSimulateMatch RPS.game (Turn 3) bots (TournamentId 0) (MatchId 0)
+        launchBotsAndSimulateMatch RPS.game (MapName "default") (Turn 3) bots (TournamentId 0) (MatchId 0)
     True <- return $! bots == bots'
     True <- return $! winners == [pepper]
     True <- return $! TurnLimit == gameover
+    True <- return $! toFilePath replayPath == "/tmp/0.replay"
     return ()
