@@ -344,7 +344,7 @@ body {
     position           : absolute;
     top                : 0;
     left               : 2.1rem;
-    width              : calc(100% - 7.2rem);
+    width              : calc(100% - 12.2rem);
     height             : 1.9rem;
     
     cursor             : grab;
@@ -363,7 +363,7 @@ body {
 #turns-counter {
     position          : absolute;
     top               : 0;
-    right             : 0;
+    right             : 5rem;
     width             : 5rem;
     height            : 1.9rem;
     
@@ -377,4 +377,27 @@ body {
 
 #turns-counter-text {
     margin-top : .5rem;
+}
+
+#log-button {
+    position          : absolute;
+    top               : 0;
+    right             : 0;
+    width             : 5rem;
+    height            : 1.9rem;
+    
+    font-size         : 120%;
+    text-align        : center;
+    
+    border-left-color : #393;
+    border-left-width : .1rem;
+    border-left-style : solid;
+}
+
+#log-button > p {
+    margin-top : .5rem;
+}
+
+#log-button a {
+    color : #393;
 }

@@ -18,7 +18,8 @@ function _generateMatch(match) {
         contesters: [],
         winner: -1,
         reason: 'TurnLimit',
-        log: undefined
+        log: undefined,
+        url: undefined
     };
     
     let bot1_name = match.matchBots[0].botName;
@@ -44,10 +45,16 @@ function _generateMatch(match) {
     return result;
 }
 
+function _getMatchLogURL(index) {
+    return engine_url + "/replay/" + index;
+}
+
 function _updateMatches(engine_response) {
     let matches = [];
-    engine_response.ssMatches.forEach((match) => {
-        matches.push(_generateMatch(match));
+    engine_response.ssMatches.forEach((match, index) => {
+        let m = _generateMatch(match);
+        m.url = _getMatchLogURL(index);
+        matches.push(m);
     });
     AppStore.setMatches(matches);
 }

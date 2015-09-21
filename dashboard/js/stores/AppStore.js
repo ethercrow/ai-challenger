@@ -109,6 +109,7 @@ class AppStore extends EventEmitter {
             
             case 'Disqualification':
                 reason = 'D';
+                break;
             }
             
             match_table[match.contesters[0]][match.contesters[1]] = ((match.winner == 0)?'W':'L') + ':' + reason;

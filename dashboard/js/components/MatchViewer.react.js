@@ -32,7 +32,7 @@ class MatchViewer extends React.Component {
                 <GridView match={this.state.match} bot1_name={this.state.bot_name1} bot2_name={this.state.bot_name2}/>
             
                 <footer>
-                    <ViewControlPanel/>
+                    <ViewControlPanel log_url={this.state.match.url}/>
                 </footer>
             </div>
         );
