@@ -26,6 +26,13 @@ Running
   ./ai-challenger-grid/ai-challenger-grid --port 8081 --address 127.0.0.1
   ./tourney_grid.sh # launch a tournament between bundled bots
 
+Debugging your bot
+------------------
+
+::
+
+  ./launch_training_tournament.py 10x10 mybot.py # launch a training session of your bot vs all bundled ones
+
 Server API doc...
 ------------------
 
