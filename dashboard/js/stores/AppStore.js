@@ -82,10 +82,18 @@ class AppStore extends EventEmitter {
         }, 0);
     }
     
+    getBotNumDraws(bot_index) {
+        return data.matches.reduce((num_draws, match) => {
+            if((match.contesters[0] == bot_index) || (match.contesters[1] == bot_index)) {
+                return num_draws + ((match.winner == -1)?1:0);
+            } else return num_draws;
+        }, 0);
+    }
+
     getBotNumDefeats(bot_index) {
         return data.matches.reduce((num_defeats, match) => {
             if((match.contesters[0] == bot_index) || (match.contesters[1] == bot_index)) {
-                return num_defeats + ((match.contesters[match.winner] != bot_index)?1:0);
+                return num_defeats + ((match.winner != -1 && match.contesters[match.winner] != bot_index)?1:0);
             } else return num_defeats;
         }, 0);
     }

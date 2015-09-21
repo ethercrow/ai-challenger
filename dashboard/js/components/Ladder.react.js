@@ -23,7 +23,7 @@ class Ladder extends React.Component {
     render() {
         var lines = this.state.data.map((bot, index) => {
             return (
-                <LadderLine key={index} rank={bot.rank} name={bot.name} win={bot.win} loose={bot.lost}/>
+                <LadderLine key={index} rank={bot.rank} name={bot.name} wins={bot.win} losses={bot.lost} draws={bot.draws}/>
             );
         });
         
@@ -33,7 +33,7 @@ class Ladder extends React.Component {
                     <caption>LADDER</caption>
 
                     <thead>
-                        <tr><th></th><th>Name</th><th>Win/Lost</th></tr>
+                        <tr><th></th><th>Name</th><th>Wins/Losses/Draws</th></tr>
                     </thead>
 
                     <tbody>
@@ -51,7 +51,8 @@ class Ladder extends React.Component {
                 name: bot_name,
                 rank: 0,
                 win: AppStore.getBotNumVictories(bot_index), 
-                lost: AppStore.getBotNumDefeats(bot_index)
+                lost: AppStore.getBotNumDefeats(bot_index),
+                draws: AppStore.getBotNumDraws(bot_index)
             });
         });
         
