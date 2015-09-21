@@ -3,6 +3,7 @@ import AppStore from '../stores/AppStore';
 
 import MatchViewerCloseButton from './MatchViewerCloseButton.react';
 import GridView from './GridView.react';
+import ErrorPane from './ErrorPane.react';
 import ViewControlPanel from './ViewControlPanel.react';
 
 class MatchViewer extends React.Component {
@@ -30,6 +31,7 @@ class MatchViewer extends React.Component {
                 </header>
             
                 <GridView match={this.state.match} bot1_name={this.state.bot_name1} bot2_name={this.state.bot_name2}/>
+                <ErrorPane match={this.state.match} bot1_name={this.state.bot_name1} bot2_name={this.state.bot_name2}/>
             
                 <footer>
                     <ViewControlPanel log_url={this.state.match.url}/>

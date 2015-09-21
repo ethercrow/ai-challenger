@@ -18,6 +18,7 @@ function _generateMatch(match) {
         contesters: [],
         winner: -1,
         reason: 'TurnLimit',
+        error_messages: [],
         log: undefined,
         url: undefined
     };
@@ -41,6 +42,9 @@ function _generateMatch(match) {
     }
     
     result.reason = match.matchGameOverType.tag;
+    if(result.reason == 'Disqualification') {
+        result.error_messages = match.matchGameOverType.contents;
+    }
     
     return result;
 }
