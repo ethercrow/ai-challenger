@@ -129,7 +129,9 @@ launchTraining game stateVar mapName name = do
 launchTournament :: StateVar -> TournamentKind -> MapName ->
      (V.Vector Bot -> TournamentId -> MatchId -> IO Match)
      -> EitherT ServantErr IO Tournament
-launchTournament stateVar tournamentKind mapName play = do
+launchTournament stateVar tournamentKind _mapName play = do
+    -- TODO: include mapName in tournament record,
+    --       spectators would probably like to know what map is used in a tournament
     bots <- ssBots <$> readStateVar stateVar
     let pairs = case tournamentKind of 
             RoundRobin -> [V.fromList [b1, b2] | b1 <- bots, b2 <- bots, b1 < b2]

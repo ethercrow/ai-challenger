@@ -10,6 +10,9 @@ module AIChallenger.StateVar
     , subscribeToStateUpdates
     ) where
 
+-- FIXME: determined user of this module can probably make
+--        match id collisions, but we can probably live with that for now
+
 import Control.Concurrent.MVar
 import qualified Control.Concurrent.Chan as Chan
 import Control.Monad.IO.Class
@@ -62,16 +65,12 @@ mkStateVar = StateVar
 mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> m Tournament
 mkTournament (StateVar var chan) tournamentKind matchCount = do
     liftIO . modifyMVar var $ \value ->
-        let tid@(TournamentId t) = ssNextTournamentId value
+        let tid = ssNextTournamentId value
             MatchId m = ssNextMatchId value
             mids = V.fromList (fmap MatchId [m .. m + matchCount - 1])
             newTournament = Tournament tid tournamentKind mids
             u = AddTournament newTournament
-            newValue = value
-                { ssNextTournamentId = TournamentId (t + 1)
-                , ssNextMatchId = MatchId (m + matchCount)
-                , ssTournaments = pure newTournament <> ssTournaments value
-                }
+            newValue = applyServerStateUpdate u value
         in newValue `deepseq` (do
             Chan.writeChan chan u
             return $! (newValue, newTournament)
@@ -84,6 +83,16 @@ applyServerStateUpdate (RemoveBot bot) ss =
     ss { ssBots = V.filter (/= bot) (ssBots ss) }
 applyServerStateUpdate (AddMatch match) ss =
     ss { ssMatches = pure match <> ssMatches ss }
+applyServerStateUpdate (AddTournament newTournament)
+    ss@(ServerState
+        { ssNextTournamentId = TournamentId tid
+        , ssNextMatchId = MatchId m
+        , ssTournaments = tournaments
+        }) =
+    ss { ssNextTournamentId = TournamentId (tid + 1)
+       , ssNextMatchId = MatchId (m + length (tMatchIds newTournament))
+       , ssTournaments = pure newTournament <> tournaments
+       }
 
 subscribeToStateUpdates :: StateVar -> IO (ServerState, OutChan ServerStateUpdate)
 subscribeToStateUpdates (StateVar stateVar chan) =
