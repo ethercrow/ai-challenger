@@ -113,6 +113,12 @@ If a tile doesn't share a point with any empty tiles, that is it's completely
 surrounded by tiles captured by either player, it becomes empty on the next
 turn.
 
+In the following example the center tile will be eliminated and become empty::
+
+    122
+    112
+    221
+
 Disqualification conditions
 ---------------------------
 
