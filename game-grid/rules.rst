@@ -90,6 +90,8 @@ A player can only capture tiles that share at least one side with a tile already
 captured by them. So for example if a player controls (0, 0), they can capture
 (0, 1) or (1, 0) but not (1, 1).
 
+If both players try to capture the same tile it remains in the previous state.
+
 Number of capture orders must not be greater than energy budget available at
 a given turn.
 
