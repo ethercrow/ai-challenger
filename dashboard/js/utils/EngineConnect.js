@@ -55,7 +55,7 @@ function _getMatchLogURL(index) {
 
 function _updateMatches(engine_response) {
     let matches = [];
-    engine_response.ssMatches.forEach((match, index) => {
+    engine_response.ssMatches.reverse().forEach((match, index) => {
         let m = _generateMatch(match);
         m.url = _getMatchLogURL(index);
         matches.push(m);
