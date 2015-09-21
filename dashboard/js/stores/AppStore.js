@@ -97,8 +97,22 @@ class AppStore extends EventEmitter {
         }
         
         data.matches.forEach((match) => {
-            match_table[match.contesters[0]][match.contesters[1]] = (match.winner == 0)?'W':'L';
-            match_table[match.contesters[1]][match.contesters[0]] = (match.winner == 1)?'W':'L';
+            let reason = '';
+            switch(match.reason) {
+            case 'Elimination':
+                reason = 'E';
+                break;
+            
+            case 'TurnLimit':
+                reason = 'TL';
+                break;
+            
+            case 'Disqualification':
+                reason = 'D';
+            }
+            
+            match_table[match.contesters[0]][match.contesters[1]] = ((match.winner == 0)?'W':'L') + ':' + reason;
+            match_table[match.contesters[1]][match.contesters[0]] = ((match.winner == 1)?'W':'L') + ':' + reason;
         });
         
         return match_table;

@@ -17,6 +17,7 @@ function _generateMatch(match) {
     let result = {
         contesters: [],
         winner: -1,
+        reason: 'TurnLimit',
         log: undefined
     };
     
@@ -37,6 +38,8 @@ function _generateMatch(match) {
     } else {
         console.error("INTERNAL ERROR: Incoherent state returned!");
     }
+    
+    result.reason = match.matchGameOverType.tag;
     
     return result;
 }
