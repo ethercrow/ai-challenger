@@ -8,7 +8,11 @@ curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"greedy\", \"bo
 
 curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"randy\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/game-grid/randy.py\"}}" http://$HOST:8081/add-bot
 
-curl -XPOST http://$HOST:8081/launch-round-robin-tournament/10x10
+curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"asdf\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/test-grid/test-bots/asdf.erl\"}}" http://$HOST:8081/add-bot
+
+curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"waiver\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/test-grid/test-bots/waiver.js\"}}" http://$HOST:8081/add-bot
+
+curl -XPOST http://$HOST:8081/launch-round-robin-tournament/40x40
 
 sleep 1
 echo ''
