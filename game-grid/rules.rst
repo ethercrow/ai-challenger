@@ -92,6 +92,8 @@ captured by them. So for example if a player controls (0, 0), they can capture
 
 If both players try to capture the same tile it remains in the previous state.
 
+Trying to capture already captured (by either player) tiles is also allowed. Capturing your own tile prevents it from being captured by the opponent on the same turn.
+
 Number of capture orders must not be greater than energy budget available at
 a given turn.
 
