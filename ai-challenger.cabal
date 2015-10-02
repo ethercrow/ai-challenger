@@ -120,7 +120,7 @@ Test-Suite GridTest
   other-modules:
       Grid
   hs-source-dirs: game-grid, test-grid
-  ghc-options: -Wall -ferror-spans -threaded -with-rtsopts=-T
+  ghc-options: -Wall -ferror-spans -threaded "-with-rtsopts=-T -K1K"
   ghc-prof-options: -auto-all -prof
   default-language:    Haskell2010
   build-depends:
