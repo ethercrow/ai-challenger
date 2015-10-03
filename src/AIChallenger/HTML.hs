@@ -4,6 +4,8 @@
 
 module AIChallenger.HTML
     ( MainPage (..)
+    , TournamentPage (..)
+    , MatchPage (..)
     ) where
 
 import Data.List (sort)
@@ -16,41 +18,111 @@ import AIChallenger.Types
 
 newtype MainPage = MainPage ServerState
 
+data TournamentPage = TournamentPage Tournament (V.Vector Bot) (V.Vector Match)
+
+data MatchPage = MatchPage Match T.Text
+
 instance ToHtml MainPage where
-    toHtml (MainPage (ServerState _ _ bots matches _tournaments)) =
+    toHtml (MainPage (ServerState _ _ _ _ tournaments)) =
         doctypehtml_ $ do
             h1_ "Welcome!"
-            h2_ "Bots"
-            mapM_ (p_ . botWidget) bots
-            h2_ "Matches"
-            table_ $ do
-                tr_ $ do
-                    th_ ""
-                    foldMap (th_ . botWidget) bots
-                V.forM_ bots $ \b1 -> tr_ $ do
-                    td_ (botWidget b1)
-                    V.forM_ bots $ \b2 -> do
-                        let predicate = (== (sort [b1, b2])) . sort . V.toList . matchBots
-                        case filter predicate (V.toList matches) of
-                            match : _ -> td_ (matchWidget match b1)
-                            [] -> td_ ""
+            div_ [style_ "float: left"] $ do
+                h2_ "Tournaments"
+                mapM_ tournamentWidget tournaments
+            div_ [style_ "float: left"] $ do
+                h1_ "Place for TV"
+    toHtmlRaw = toHtml
+
+instance ToHtml TournamentPage where
+    toHtml (TournamentPage (Tournament (TournamentId tid) tkind _) bots matches) =
+        doctypehtml_ $ do
+            h1_ (toHtml ("Tournament #" <> showT tid))
+            div_ (toHtml ("Tournament type: " <> showT tkind))
+            div_ [style_ "float: left"] $ do
+                h2_ "Scores"
+                table_ $ do
+                    tr_ $ th_ "Bot" >> th_ "W" >> th_ "D" >> th_ "L"
+                    V.forM_ (scoreTournament bots matches) $ \(bot, w, d, l) -> tr_ $ do
+                        td_ (botWidget bot)
+                        td_ (toHtml (showT w))
+                        td_ (toHtml (showT d))
+                        td_ (toHtml (showT l))
+            div_ [style_ "float: left"] $ do
+                h2_ "Matches"
+                table_ $ do
+                    tr_ $ do
+                        th_ ""
+                        foldMap (th_ . botWidget) bots
+                    V.forM_ bots $ \b1 -> tr_ $ do
+                        td_ (botWidget b1)
+                        V.forM_ bots $ \b2 -> do
+                            let predicate = (== (sort [b1, b2])) . sort . V.toList . matchBots
+                            case filter predicate (V.toList matches) of
+                                match : _ -> td_ (tourneyTableCell match b1)
+                                [] -> td_ ""
+    toHtmlRaw = toHtml
+
+scoreTournament :: V.Vector Bot -> V.Vector Match -> V.Vector (Bot, Int, Int, Int)
+scoreTournament bots matches =
+    fmap (\bot ->
+        let (Sum w, Sum d, Sum l) = foldMap (scoreMatch bot) matches
+        in (bot, w, d, l)) bots
+    where scoreMatch bot (Match {matchWinners = ws, matchBots = bs})
+            | pure bot == ws = (Sum 1, Sum 0, Sum 0)
+            | V.length ws == 1 && V.elem bot bs = (Sum 0, Sum 0, Sum 1)
+            | otherwise = (Sum 0, Sum 1, Sum 0)
+
+instance ToHtml MatchPage where
+    toHtml (MatchPage (Match (MatchId mid) _ bots winners gameOver _) replayText) =
+        doctypehtml_ $ do
+            h1_ (toHtml ("Match #" <> showT mid))
+            h2_ gameOverMessage
+            details_ $ do
+                summary_ "Show replay log"
+                pre_ (toHtml replayText)
+        where
+        gameOverMessage =
+            case V.toList winners of
+                [wbot] -> 
+                    let [lbot] = V.toList (V.filter (`V.notElem` winners) bots)
+                    in 
+                        botWidget wbot
+                        <> " defeated " <>
+                        botWidget lbot
+                        <> " via " <>
+                        toHtml (showT gameOver)
+                _ ->
+                    foldMap botWidget (V.toList bots) <> "fought to a draw"
     toHtmlRaw = toHtml
 
 newtype BotWidget = BotWidget Bot
 
 instance ToHtml BotWidget where
     toHtml (BotWidget (Bot name (ExecutableBot exe))) =
-        span_ [title_ (T.pack (show exe))] (toHtml name)
+        span_ [title_ (showT exe)] (toHtml name)
     toHtml (BotWidget (Bot name _)) = toHtml name
     toHtmlRaw = toHtml
 
 botWidget :: Monad m => Bot -> HtmlT m ()
 botWidget = toHtml . BotWidget
 
-data MatchWidget = MatchWidget Match Bot
+newtype TournamentWidget = TournamentWidget Tournament
 
-instance ToHtml MatchWidget where
-    toHtml (MatchWidget (Match (MatchId mid) _ _ winners gameover _) b1) =
+instance ToHtml TournamentWidget where
+    toHtml (TournamentWidget (Tournament (TournamentId tid) tkind tmids)) =
+        let text = toHtml
+                (showT tkind <> " #" <> showT tid <>
+                 " (" <> showT (V.length tmids) <> " matches)")
+        in a_ [href_ ("tournament/" <> showT tid)] text
+    toHtmlRaw = toHtml
+
+tournamentWidget :: Monad m => Tournament -> HtmlT m ()
+tournamentWidget = toHtml . TournamentWidget
+
+data TourneyTableCell = TourneyTableCell Match Bot
+
+instance ToHtml TourneyTableCell where
+    toHtml (TourneyTableCell (Match (MatchId mid) _ _ winners gameover _) b1) =
         let text = winText <> ":" <> gameoverText
             winText =
                 if winners == pure b1 then "W"
@@ -60,8 +132,8 @@ instance ToHtml MatchWidget where
                 Disqualification _ -> "DQ"
                 TurnLimit -> "TL"
                 Elimination -> "E"
-        in a_ [href_ ("match/" <> T.pack (show mid))] text
+        in a_ [href_ ("match/" <> showT mid)] text
     toHtmlRaw = toHtml
 
-matchWidget :: Monad m => Match -> Bot -> HtmlT m ()
-matchWidget match bot = toHtml (MatchWidget match bot)
+tourneyTableCell :: Monad m => Match -> Bot -> HtmlT m ()
+tourneyTableCell match bot = toHtml (TourneyTableCell match bot)

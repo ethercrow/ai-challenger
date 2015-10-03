@@ -23,10 +23,11 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy.IO as TLIO
-import qualified Data.Vector as V
+import qualified Data.Vector.Extended as V
 import qualified Network.Wai as Wai
 import Network.Wai.Metrics
 import Network.Wai.Middleware.Cors
@@ -48,22 +49,19 @@ import AIChallenger.Types
 turnLimit :: Turn
 turnLimit = Turn 200
 
-type WebAPI
-    = Get '[HTML] MainPage
-    :<|> "state" :> Get '[JSON] ServerState
-    :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
+type WebAPI = JSONAPI :<|> HTMLAPI
 
+type JSONAPI
+    = "state" :> Get '[JSON] ServerState
+    :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-round-robin-tournament" :> Capture "mapName" MapName :> Post '[JSON] Tournament
     :<|> "launch-training" :> Capture "mapName" MapName :> Capture "botName" T.Text :> Post '[JSON] Tournament
-
     :<|> "match" :> Capture "matchId" MatchId :> Get '[JSON] Match
-    :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
 
-    :<|> "dashboard" :> Raw
-    :<|> "css" :> Raw
-    :<|> "images" :> Raw
-    :<|> "js" :> Raw
-
+type HTMLAPI
+    = Get '[HTML] MainPage
+    :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "tournament" :> Capture "tournamentId" TournamentId :> Get '[HTML] TournamentPage
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
@@ -83,21 +81,31 @@ wsApp stateVar pendingConnection = do
 
 httpApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
 httpApp game stateVar waiMetrics dashboardDir = do
-    let handlers = mainPage stateVar
-            :<|> readStateVar stateVar
+    let jsonHandlers = readStateVar stateVar
             :<|> postBot stateVar
             :<|> launchRoundRobinTournament game stateVar
             :<|> launchTraining game stateVar
             :<|> match stateVar
-            :<|> replay stateVar
-            :<|> serveDirectory (toFilePath dashboardDir)
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "css")))
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "images")))
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "js")))
-            :<|> help
-    let middleware :: [Wai.Application -> Wai.Application]
+        htmlHandlers = mainPage stateVar
+            :<|> matchPage stateVar
+            :<|> tournamentPage stateVar
+            :<|> helpPage
+        handlers = jsonHandlers :<|> htmlHandlers
+        middleware :: [Wai.Application -> Wai.Application]
         middleware = catMaybes [metrics <$> waiMetrics, Just logStdout, Just simpleCors]
     foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
+
+tournamentPage :: MonadIO m => StateVar -> TournamentId -> m TournamentPage
+tournamentPage stateVar tid = do
+    state <- readStateVar stateVar
+    -- TODO: better lookup performance
+    case V.filter ((== tid) . tId) (ssTournaments state) of
+        [] -> error ("no tournament with " <> show tid)
+        [t] -> do
+            let matches = V.filter ((`elem` tMatchIds t) . matchId) (ssMatches state)
+                bots = V.nub (V.concatMap matchBots matches)
+            return (TournamentPage t bots matches)
+        _ -> error "tournament id collision, this should never happen"
 
 postBot :: StateVar -> Bot -> EitherT ServantErr IO Bot
 postBot stateVar bot = do
@@ -161,6 +169,12 @@ match stateVar mid = do
         [m] -> return m
         _ -> error "match id collision, this should never happen"
 
+matchPage :: MonadIO m => StateVar -> MatchId -> m MatchPage
+matchPage stateVar mid = do
+    m <- match stateVar mid
+    replayText <- liftIO (TIO.readFile (toFilePath (matchReplayPath m)))
+    return (MatchPage m replayText)
+
 replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
 replay stateVar mid = do
     matches <- ssMatches <$> readStateVar stateVar
@@ -174,8 +188,8 @@ replay stateVar mid = do
 mainPage :: MonadIO m => StateVar -> m MainPage
 mainPage stateVar = MainPage <$> readStateVar stateVar
 
-help :: EitherT ServantErr IO APIDocs
-help = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy WebAPI)))))
+helpPage :: EitherT ServantErr IO APIDocs
+helpPage = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy JSONAPI)))))
 
 newtype APIDocs = APIDocs TL.Text
 
