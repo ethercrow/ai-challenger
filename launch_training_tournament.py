@@ -12,8 +12,6 @@ SERVER_BINARY = './ai-challenger-grid/ai-challenger-grid'
 
 def main():
 
-    mybot_exe = os.path.abspath(sys.argv[2])
-
     dirname = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dirname)
 
@@ -27,6 +25,8 @@ def main():
         print " {0} <map_name> <my bot executable>".format(sys.argv[0])
         print "Available maps: 10x10, 40x40"
         sys.exit(2)
+
+    mybot_exe = os.path.abspath(sys.argv[2])
 
     subprocess.call(['killall', 'ai-challenger-grid'])
     print 'Launching training tournament for {0}'.format(mybot_exe)
