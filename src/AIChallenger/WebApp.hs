@@ -21,7 +21,9 @@ import Control.Monad.Trans.Either
 import qualified Data.Aeson as A
 import Data.Maybe
 import Data.Monoid
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Data.Text.Lazy as TL
@@ -40,6 +42,7 @@ import Servant.Docs
 import Servant.HTML.Lucid
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Markdown as MD
+import Text.Read
 
 import AIChallenger.HTML
 import AIChallenger.Match
@@ -70,16 +73,49 @@ webApp game stateVar waiMetrics dashboardDir =
         (wsApp stateVar)
         (httpApp game stateVar waiMetrics dashboardDir)
 
+wsSendJSON :: A.ToJSON a => Connection -> a -> IO ()
+wsSendJSON conn x = sendDataMessage conn (Text (A.encode x))
+
 wsApp :: StateVar -> ServerApp
 wsApp stateVar pendingConnection = do
-    conn <- acceptRequest pendingConnection
     (state, chan) <- subscribeToStateUpdates stateVar
-    sendDataMessage conn (Binary (A.encode state))
-    forever $ do
-        update <- readChan chan
-        sendDataMessage conn (Binary (A.encode update))
+    let reqPath = requestPath (pendingRequest pendingConnection)
+    case reqPath of
+        "state" -> do
+            conn <- acceptRequest pendingConnection
+            BS.putStrLn ("Incoming websocket request " <> reqPath)
+            wsSendJSON conn state
+            forever $ do
+                update <- readChan chan
+                wsSendJSON conn update
+        (BS.split '/' -> ["", "tournament", (fmap TournamentId . readMaybe . BS.unpack) -> Just tid]) -> do
+            -- TODO: better lookup performance
+            case V.filter ((== tid) . tId) (ssTournaments state) of
+                [] -> do
+                    BS.putStrLn ("websocket request " <> reqPath <> " rejected, because 404")
+                    rejectRequest pendingConnection (BS.pack ("no tournament with " <> show tid))
+                [t] -> do
+                    conn <- acceptRequest pendingConnection
+                    let mids = S.fromList (V.toList (tMatchIds t))
+                        completedMatches = V.filter ((`S.member` mids) . matchId) (ssMatches state)
+                        remainingMids = mids `S.difference` (S.fromList (V.toList (V.map matchId completedMatches)))
+                    wsSendJSON conn t
+                    mapM_ (wsSendJSON conn) completedMatches
+                    let go (S.null -> True) = return ()
+                        go stillRemaining = do
+                            update <- readChan chan
+                            case update of
+                                AddMatch m | matchId m `S.member` stillRemaining -> do
+                                    wsSendJSON conn m
+                                    go (S.delete (matchId m) stillRemaining)
+                                _ -> return ()
+                    go remainingMids
+                _ -> error "tournament id collision, this should never happen"
+        _ -> do
+            BS.putStrLn ("Rejected unknown websocket request " <> reqPath)
+            rejectRequest pendingConnection ("Unknown path " <> reqPath)
 
-httpApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
+httpApp :: Game game => game -> StateVar -> Maybe WaiMetrics -> Path Abs Dir -> Wai.Application
 httpApp game stateVar waiMetrics dashboardDir = do
     let jsonHandlers = readStateVar stateVar
             :<|> postBot stateVar
@@ -104,7 +140,7 @@ tournamentPage stateVar tid = do
         [t] -> do
             let matches = V.filter ((`elem` tMatchIds t) . matchId) (ssMatches state)
                 bots = V.nub (V.concatMap matchBots matches)
-            return (TournamentPage t bots matches)
+            return (TournamentPage t matches)
         _ -> error "tournament id collision, this should never happen"
 
 postBot :: StateVar -> Bot -> EitherT ServantErr IO Bot
@@ -150,7 +186,7 @@ launchTournament stateVar tournamentKind _mapName play = do
     if matchCount < 1
     then left err400 { errReasonPhrase = "Not enough bots for a tournament" }
     else do
-        tournament@(Tournament tid _ mids) <- mkTournament stateVar tournamentKind matchCount
+        tournament@(Tournament tid _ _ mids) <- mkTournament stateVar tournamentKind matchCount bots
         _ <- liftIO . forkIO $ do
             putStrLn (show tid <> " started")
             forM_ (V.zip mids pairs) $ \(mId, pair) -> do
@@ -245,7 +281,11 @@ instance ToSample Match Match where
             replayPath)
 
 instance ToSample Tournament Tournament where
-    toSample _ = Just (Tournament (TournamentId 0) RoundRobin (pure (MatchId 0)))
+    toSample _ = do
+        rocky <- Bot "Rocky" . ExecutableBot <$> parseAbsFile "/tmp/rocky.py"
+        pepper <- Bot "Pepper" . ExecutableBot <$> parseAbsFile "/tmp/pepper.py"
+        return (Tournament (TournamentId 0) RoundRobin (V.fromList [rocky, pepper]) (pure (MatchId 0)))
+
 
 instance ToSample Bot Bot where
     toSample _ = Bot "Randy" . ExecutableBot <$> parseAbsFile "/home/randy/src/shiny_metal_bot.sh"

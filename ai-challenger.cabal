@@ -26,6 +26,7 @@ library
     , either
     , ekg
     , extra
+    , file-embed
     , lucid
     , markdown
     , mtl

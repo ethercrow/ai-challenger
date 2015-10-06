@@ -42,6 +42,7 @@ main = do
         tournament = Tournament
             (TournamentId 3)
             RoundRobin
+            (V.fromList [rocky, pepper, scarlett])
             (V.fromList [MatchId 42, MatchId 43, MatchId 44])
 
         state = ServerState
@@ -56,7 +57,6 @@ main = do
     save "lorem-tournament.html"
         (TournamentPage
             tournament
-            (V.fromList [rocky, pepper, scarlett])
             (V.fromList [rvp, rvs, pvs]))
 
     save "lorem-match.html"

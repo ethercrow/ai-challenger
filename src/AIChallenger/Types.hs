@@ -50,6 +50,7 @@ data TournamentKind = RoundRobin | Training !BotName
 data Tournament = Tournament
     { tId :: !TournamentId
     , tKind :: !TournamentKind
+    , tBots :: !(V.Vector Bot)
     , tMatchIds :: !(V.Vector MatchId)
     } deriving (Eq, Show, Generic)
 

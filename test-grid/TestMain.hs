@@ -94,7 +94,7 @@ case_tiny_tournament = test $ \updates -> do
     up2 <- liftIO $ readChan updates
     assertEqual (AddBot bot2) up2
 
-    let tournament = Tournament (TournamentId 0) RoundRobin (pure (MatchId 0))
+    let tournament = Tournament (TournamentId 0) RoundRobin (V.fromList [bot2, bot1]) (pure (MatchId 0))
 
     resp3 <- reqStartRoundRobinTournament
     liftIO $ print resp3
@@ -140,6 +140,7 @@ case_40_player_tournament = test $ \updates -> do
     let tournament = Tournament
             (TournamentId 0)
             RoundRobin
+            (V.reverse (V.fromList bots))
             (V.fromList (fmap MatchId [0 .. matchCount - 1]))
     assertBody (A.encode tournament) resp3
 

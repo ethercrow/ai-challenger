@@ -62,13 +62,13 @@ mkStateVar = StateVar
     <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty mempty))
     <*> liftIO Chan.newChan
 
-mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> m Tournament
-mkTournament (StateVar var chan) tournamentKind matchCount = do
+mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> V.Vector Bot -> m Tournament
+mkTournament (StateVar var chan) tournamentKind matchCount bots = do
     liftIO . modifyMVar var $ \value ->
         let tid = ssNextTournamentId value
             MatchId m = ssNextMatchId value
             mids = V.fromList (fmap MatchId [m .. m + matchCount - 1])
-            newTournament = Tournament tid tournamentKind mids
+            newTournament = Tournament tid tournamentKind bots mids
             u = AddTournament newTournament
             newValue = applyServerStateUpdate u value
         in newValue `deepseq` (do
