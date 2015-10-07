@@ -10,7 +10,7 @@ ws.onmessage = function(e){
   if (tournaments.filter(function(x){
         return JSON.stringify(x) == JSON.stringify(triple)
       }).length == 0) {
-    tournaments.push(triple);
+    tournaments.unshift(triple);
     updateTournamentsTable();
   };
 };
