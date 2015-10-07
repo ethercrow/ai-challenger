@@ -10,9 +10,10 @@ module AIChallenger.HTML
     ) where
 
 import Control.Monad
-import Data.List (sort)
-import Data.Monoid
 import Data.FileEmbed
+import Data.List (sort, sortBy)
+import Data.Monoid
+import Data.Ord (comparing)
 import Lucid
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -66,7 +67,11 @@ instance ToHtml TournamentPage where
                 h2_ "Scores"
                 table_ [id_ "scores"] $ do
                     tr_ $ th_ "Bot" >> th_ "W" >> th_ "D" >> th_ "L"
-                    V.forM_ (scoreTournament bots completedMatches) $ \(bot, w, d, l) -> tr_ $ do
+                    let botsAndScores =
+                            sortBy
+                                (comparing (\(_, w, d, _) -> - 3 * w - d))
+                                (V.toList (scoreTournament bots completedMatches))
+                    forM_ botsAndScores $ \(bot, w, d, l) -> tr_ $ do
                         td_ (botWidget bot)
                         td_ (toHtml (showT w))
                         td_ (toHtml (showT d))
