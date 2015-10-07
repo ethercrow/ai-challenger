@@ -33,7 +33,7 @@ function updateScoreTable() {
     botNamesAndScores.map(
       function([n, w, d, l]){
         return '<tr><td>' + n + '</td><td>' + w + '</td><td>' + d + '</td><td>' + l + '</td></tr>';
-      }).join() + '</tbody>';
+      }).join('') + '</tbody>';
 };
 
 ws.onmessage = function(e){
@@ -48,8 +48,8 @@ ws.onmessage = function(e){
       var matchCell = document.getElementById(cellId);
       var otherMatchCell = document.getElementById(otherCellId);
       var matchCellText = getMatchCellText(match);
-      matchCell.innerHTML = '<a href=\"' + match.matchId + '\">' + matchCellText + '</a>';
-      otherMatchCell.innerHTML = '<a href=\"' + match.matchId + '\">' + reverseCellText(matchCellText) + '</a>';
+      matchCell.innerHTML = '<a href="/matches/' + match.matchId + '">' + matchCellText + '</a>';
+      otherMatchCell.innerHTML = '<a href="/matches/' + match.matchId + '">' + reverseCellText(matchCellText) + '</a>';
       updateScoreTable();
       break;
     case 'tournament':

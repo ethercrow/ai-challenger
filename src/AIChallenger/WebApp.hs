@@ -63,8 +63,8 @@ type JSONAPI
 
 type HTMLAPI
     = Get '[HTML] MainPage
-    :<|> "match" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
-    :<|> "tournament" :> Capture "tournamentId" TournamentId :> Get '[HTML] TournamentPage
+    :<|> "matches" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "tournaments" :> Capture "tournamentId" TournamentId :> Get '[HTML] TournamentPage
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
 webApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
@@ -88,6 +88,14 @@ wsApp stateVar pendingConnection = do
             forever $ do
                 update <- readChan chan
                 wsSendJSON conn update
+        "/tournaments" -> do
+            conn <- acceptRequest pendingConnection
+            mapM_ (wsSendJSON conn) (ssTournaments state)
+            forever $ do
+                update <- readChan chan
+                case update of
+                    AddTournament t -> wsSendJSON conn t
+                    _ -> return ()
         (BS.split '/' -> ["", "tournament", (fmap TournamentId . readMaybe . BS.unpack) -> Just tid]) -> do
             -- TODO: better lookup performance
             case V.filter ((== tid) . tId) (ssTournaments state) of

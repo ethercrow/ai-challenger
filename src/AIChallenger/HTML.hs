@@ -31,10 +31,31 @@ instance ToHtml MainPage where
             h1_ "Welcome!"
             div_ [style_ "float: left"] $ do
                 h2_ "Tournaments"
-                mapM_ tournamentWidget tournaments
+                div_ [id_ "tournaments"] $ do
+                    table_ $ do
+                        mapM_ (tr_ . td_ . tournamentWidget) tournaments
             div_ [style_ "float: left"] $ do
                 h1_ "Place for TV"
+            script_ [type_ "text/javascript"] (mainJS tournaments)
     toHtmlRaw = toHtml
+
+mainJS :: V.Vector Tournament -> T.Text
+mainJS tournaments = T.unlines
+    [ "var tournaments = [" <> T.intercalate ", " (V.toList (V.map showTournament tournaments)) <> "];"
+    , $(embedStringFile "src/js/main.js")
+    ]
+    where
+    showTournament (Tournament (TournamentId tid) kind _ matchIds) = mconcat
+        [ "["
+        , case kind of
+            RoundRobin -> "'RoundRobin'"
+            Training name -> "'Training " <> name <> "'"
+        , ", "
+        , showT tid
+        , ", "
+        , showT (V.length matchIds)
+        , "]"
+        ]
 
 instance ToHtml TournamentPage where
     toHtml (TournamentPage (Tournament tid@(TournamentId tid') tkind bots matchIds) completedMatches) =
@@ -128,7 +149,7 @@ instance ToHtml TournamentWidget where
         let text = toHtml
                 (showT tkind <> " #" <> showT tid <>
                  " (" <> showT (V.length tmids) <> " matches)")
-        in a_ [href_ ("tournament/" <> showT tid)] text
+        in a_ [href_ ("tournaments/" <> showT tid)] text
     toHtmlRaw = toHtml
 
 tournamentWidget :: Monad m => Tournament -> HtmlT m ()
@@ -147,7 +168,7 @@ instance ToHtml TourneyTableCell where
                 Disqualification _ -> "DQ"
                 TurnLimit -> "TL"
                 Elimination -> "E"
-        in a_ [href_ ("match/" <> showT mid)] text
+        in a_ [href_ ("/matches/" <> showT mid)] text
     toHtmlRaw = toHtml
 
 tourneyTableCell :: Monad m => Match -> Bot -> HtmlT m ()
