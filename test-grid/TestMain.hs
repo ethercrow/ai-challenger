@@ -76,7 +76,7 @@ case_get_state = test $ \_updates -> do
 case_tiny_tournament :: Assertion
 case_tiny_tournament = test $ \updates -> do
     let bot1 = testBot "bender" "bender.py"
-        bot2 = testBot "fry" "fry.py"
+        bot2 = testBot "idle" "idle.py"
 
     resp1 <- reqAddBot bot1
     liftIO $ print resp1
@@ -113,8 +113,8 @@ case_tiny_tournament = test $ \updates -> do
             (MatchId 0)
             (TournamentId 0)
             (pure bot1 <> pure bot2)
-            (pure bot2)
-            Elimination
+            (pure bot1)
+            TurnLimit
             $(mkAbsFile "/tmp/0.replay")))
         up4
 

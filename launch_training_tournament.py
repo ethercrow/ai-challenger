@@ -36,6 +36,7 @@ def main():
         add_bot('my_bot', mybot_exe)
         add_bot('greedy', 'game-grid/greedy.py')
         add_bot('randy', 'game-grid/randy.py')
+        add_bot('idle', 'test-grid/test-bots/idle.py')
         launch_tournament(sys.argv[1])
         open_in_browser(HOST + '/tournaments/0')
         print
