@@ -31,7 +31,7 @@ test :: (OutChan ServerStateUpdate -> Session b) -> IO b
 test stuff = do
     stateVar <- mkStateVar
     (_, updates) <- subscribeToStateUpdates stateVar
-    runSession (stuff updates) (webApp Grid.game stateVar Nothing $(mkAbsDir "/dummy/dashboard/dir"))
+    runSession (stuff updates) (webApp Grid.game stateVar Nothing)
 
 reqStartRoundRobinTournament :: Session SResponse
 reqStartRoundRobinTournament = srequest
@@ -76,7 +76,7 @@ case_get_state = test $ \_updates -> do
 case_tiny_tournament :: Assertion
 case_tiny_tournament = test $ \updates -> do
     let bot1 = testBot "bender" "bender.py"
-        bot2 = testBot "fry" "fry.py"
+        bot2 = testBot "idle" "idle.py"
 
     resp1 <- reqAddBot bot1
     liftIO $ print resp1
@@ -94,7 +94,7 @@ case_tiny_tournament = test $ \updates -> do
     up2 <- liftIO $ readChan updates
     assertEqual (AddBot bot2) up2
 
-    let tournament = Tournament (TournamentId 0) RoundRobin (pure (MatchId 0))
+    let tournament = Tournament (TournamentId 0) RoundRobin (V.fromList [bot2, bot1]) (pure (MatchId 0))
 
     resp3 <- reqStartRoundRobinTournament
     liftIO $ print resp3
@@ -113,8 +113,8 @@ case_tiny_tournament = test $ \updates -> do
             (MatchId 0)
             (TournamentId 0)
             (pure bot1 <> pure bot2)
-            (pure bot2)
-            Elimination
+            (pure bot1)
+            TurnLimit
             $(mkAbsFile "/tmp/0.replay")))
         up4
 
@@ -140,6 +140,7 @@ case_40_player_tournament = test $ \updates -> do
     let tournament = Tournament
             (TournamentId 0)
             RoundRobin
+            (V.reverse (V.fromList bots))
             (V.fromList (fmap MatchId [0 .. matchCount - 1]))
     assertBody (A.encode tournament) resp3
 

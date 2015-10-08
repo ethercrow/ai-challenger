@@ -28,7 +28,8 @@ def main():
 
     mybot_exe = os.path.abspath(sys.argv[2])
 
-    subprocess.call(['killall', 'ai-challenger-grid'])
+
+    subprocess.Popen(['killall', 'ai-challenger-grid'], stderr=subprocess.PIPE).communicate()
     print 'Launching training tournament for {0}'.format(mybot_exe)
     server = subprocess.Popen('./ai-challenger-grid/ai-challenger-grid')
 
@@ -36,8 +37,9 @@ def main():
         add_bot('my_bot', mybot_exe)
         add_bot('greedy', 'game-grid/greedy.py')
         add_bot('randy', 'game-grid/randy.py')
+        add_bot('idle', 'test-grid/test-bots/idle.py')
         launch_tournament(sys.argv[1])
-        open_in_browser(HOST + '/dashboard')
+        open_in_browser(HOST + '/tournaments/0')
         print
         print 'Press Enter to shutdown server'
         print

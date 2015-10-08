@@ -12,6 +12,8 @@ curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"asdf\", \"botC
 
 curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"waiver\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/test-grid/test-bots/waiver.js\"}}" http://$HOST:8081/add-bot
 
+curl -XPOST -H "Content-Type: application/json" -d"{\"botName\":\"idle\", \"botCommunication\":{\"tag\":\"ExecutableBot\", \"contents\":\"$PWD/test-grid/test-bots/idle.py\"}}" http://$HOST:8081/add-bot
+
 curl -XPOST http://$HOST:8081/launch-round-robin-tournament/40x40
 
 sleep 1

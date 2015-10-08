@@ -33,12 +33,10 @@ startJudge game config = do
             ]
     mapM_ (\bot -> addBot bot stateVar) bots
     selfPath <- parseAbsFile =<< getExecutablePath
-    let dashboardDir = parent selfPath </> $(mkRelDir "dashboard")
-        settings = Warp.defaultSettings
+    let settings = Warp.defaultSettings
             & Warp.setPort (cfgPort config)
             & Warp.setHost (fromString (cfgAddress config))
     putStrLn ("Dashboard is at http://" <> cfgAddress config
-        <> ":" <> show (cfgPort config)
-        <> "/dashboard")
+        <> ":" <> show (cfgPort config))
     putStrLn "EKG is at http://127.0.0.1:7999"
-    Warp.runSettings settings (webApp game stateVar (Just webMetrics) dashboardDir)
+    Warp.runSettings settings (webApp game stateVar (Just webMetrics))

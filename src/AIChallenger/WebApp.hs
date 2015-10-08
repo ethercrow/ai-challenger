@@ -21,12 +21,14 @@ import Control.Monad.Trans.Either
 import qualified Data.Aeson as A
 import Data.Maybe
 import Data.Monoid
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
+import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
-import qualified Data.Text.Lazy.IO as TLIO
-import qualified Data.Vector as V
+import qualified Data.Vector.Extended as V
 import qualified Network.Wai as Wai
 import Network.Wai.Metrics
 import Network.Wai.Middleware.Cors
@@ -39,6 +41,7 @@ import Servant.Docs
 import Servant.HTML.Lucid
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Markdown as MD
+import Text.Read
 
 import AIChallenger.HTML
 import AIChallenger.Match
@@ -48,56 +51,103 @@ import AIChallenger.Types
 turnLimit :: Turn
 turnLimit = Turn 200
 
-type WebAPI
-    = Get '[HTML] MainPage
-    :<|> "state" :> Get '[JSON] ServerState
-    :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
+type WebAPI = JSONAPI :<|> HTMLAPI
 
+type JSONAPI
+    = "state" :> Get '[JSON] ServerState
+    :<|> "add-bot" :> ReqBody '[JSON] Bot :> Post '[JSON] Bot
     :<|> "launch-round-robin-tournament" :> Capture "mapName" MapName :> Post '[JSON] Tournament
     :<|> "launch-training" :> Capture "mapName" MapName :> Capture "botName" T.Text :> Post '[JSON] Tournament
-
     :<|> "match" :> Capture "matchId" MatchId :> Get '[JSON] Match
-    :<|> "replay" :> Capture "matchId" MatchId :> Get '[PlainText] ReplayText
 
-    :<|> "dashboard" :> Raw
-    :<|> "css" :> Raw
-    :<|> "images" :> Raw
-    :<|> "js" :> Raw
-
+type HTMLAPI
+    = Get '[HTML] MainPage
+    :<|> "matches" :> Capture "matchId" MatchId :> Get '[HTML] MatchPage
+    :<|> "tournaments" :> Capture "tournamentId" TournamentId :> Get '[HTML] TournamentPage
     :<|> "help" :> Get '[HTML, PlainText] APIDocs
 
-webApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
-webApp game stateVar waiMetrics dashboardDir =
+webApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Wai.Application
+webApp game stateVar waiMetrics =
     websocketsOr defaultConnectionOptions
         (wsApp stateVar)
-        (httpApp game stateVar waiMetrics dashboardDir)
+        (httpApp game stateVar waiMetrics)
+
+wsSendJSON :: A.ToJSON a => Connection -> a -> IO ()
+wsSendJSON conn x = sendDataMessage conn (Text (A.encode x))
 
 wsApp :: StateVar -> ServerApp
 wsApp stateVar pendingConnection = do
-    conn <- acceptRequest pendingConnection
     (state, chan) <- subscribeToStateUpdates stateVar
-    sendDataMessage conn (Binary (A.encode state))
-    forever $ do
-        update <- readChan chan
-        sendDataMessage conn (Binary (A.encode update))
+    let reqPath = requestPath (pendingRequest pendingConnection)
+    case reqPath of
+        "state" -> do
+            conn <- acceptRequest pendingConnection
+            BS.putStrLn ("Incoming websocket request " <> reqPath)
+            wsSendJSON conn state
+            forever $ do
+                update <- readChan chan
+                wsSendJSON conn update
+        "/tournaments" -> do
+            conn <- acceptRequest pendingConnection
+            mapM_ (wsSendJSON conn) (ssTournaments state)
+            forever $ do
+                update <- readChan chan
+                case update of
+                    AddTournament t -> wsSendJSON conn t
+                    _ -> return ()
+        (BS.split '/' -> ["", "tournament", (fmap TournamentId . readMaybe . BS.unpack) -> Just tid]) -> do
+            -- TODO: better lookup performance
+            case V.filter ((== tid) . tId) (ssTournaments state) of
+                [] -> do
+                    BS.putStrLn ("websocket request " <> reqPath <> " rejected, because 404")
+                    rejectRequest pendingConnection (BS.pack ("no tournament with " <> show tid))
+                [t] -> do
+                    conn <- acceptRequest pendingConnection
+                    let mids = S.fromList (V.toList (tMatchIds t))
+                        completedMatches = V.filter ((`S.member` mids) . matchId) (ssMatches state)
+                        remainingMids = mids `S.difference` (S.fromList (V.toList (V.map matchId completedMatches)))
+                    wsSendJSON conn t
+                    mapM_ (wsSendJSON conn) completedMatches
+                    let go (S.null -> True) = return ()
+                        go stillRemaining = do
+                            update <- readChan chan
+                            case update of
+                                AddMatch m | matchId m `S.member` stillRemaining -> do
+                                    wsSendJSON conn m
+                                    go (S.delete (matchId m) stillRemaining)
+                                _ -> return ()
+                    go remainingMids
+                _ -> error "tournament id collision, this should never happen"
+        _ -> do
+            BS.putStrLn ("Rejected unknown websocket request " <> reqPath)
+            rejectRequest pendingConnection ("Unknown path " <> reqPath)
 
-httpApp :: Game game => game -> StateVar -> (Maybe WaiMetrics) -> Path Abs Dir -> Wai.Application
-httpApp game stateVar waiMetrics dashboardDir = do
-    let handlers = mainPage stateVar
-            :<|> readStateVar stateVar
+httpApp :: Game game => game -> StateVar -> Maybe WaiMetrics -> Wai.Application
+httpApp game stateVar waiMetrics = do
+    let jsonHandlers = readStateVar stateVar
             :<|> postBot stateVar
             :<|> launchRoundRobinTournament game stateVar
             :<|> launchTraining game stateVar
             :<|> match stateVar
-            :<|> replay stateVar
-            :<|> serveDirectory (toFilePath dashboardDir)
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "css")))
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "images")))
-            :<|> serveDirectory (toFilePath (dashboardDir </> $(mkRelDir "js")))
-            :<|> help
-    let middleware :: [Wai.Application -> Wai.Application]
+        htmlHandlers = mainPage stateVar
+            :<|> matchPage stateVar
+            :<|> tournamentPage stateVar
+            :<|> helpPage
+        handlers = jsonHandlers :<|> htmlHandlers
+        middleware :: [Wai.Application -> Wai.Application]
         middleware = catMaybes [metrics <$> waiMetrics, Just logStdout, Just simpleCors]
     foldr ($) (serve (Proxy :: Proxy WebAPI) handlers) middleware
+
+tournamentPage :: MonadIO m => StateVar -> TournamentId -> m TournamentPage
+tournamentPage stateVar tid = do
+    state <- readStateVar stateVar
+    -- TODO: better lookup performance
+    case V.filter ((== tid) . tId) (ssTournaments state) of
+        [] -> error ("no tournament with " <> show tid)
+        [t] -> do
+            let matches = V.filter ((`elem` tMatchIds t) . matchId) (ssMatches state)
+            return (TournamentPage t matches)
+        _ -> error "tournament id collision, this should never happen"
 
 postBot :: StateVar -> Bot -> EitherT ServantErr IO Bot
 postBot stateVar bot = do
@@ -142,7 +192,7 @@ launchTournament stateVar tournamentKind _mapName play = do
     if matchCount < 1
     then left err400 { errReasonPhrase = "Not enough bots for a tournament" }
     else do
-        tournament@(Tournament tid _ mids) <- mkTournament stateVar tournamentKind matchCount
+        tournament@(Tournament tid _ _ mids) <- mkTournament stateVar tournamentKind matchCount bots
         _ <- liftIO . forkIO $ do
             putStrLn (show tid <> " started")
             forM_ (V.zip mids pairs) $ \(mId, pair) -> do
@@ -161,21 +211,17 @@ match stateVar mid = do
         [m] -> return m
         _ -> error "match id collision, this should never happen"
 
-replay :: MonadIO m => StateVar -> MatchId -> m ReplayText
-replay stateVar mid = do
-    matches <- ssMatches <$> readStateVar stateVar
-    -- TODO: better than O(n) lookup
-    case V.filter ((== mid) . matchId) matches of
-        [] -> error ("no match with " <> show mid)
-        [m] -> do
-            ReplayText <$> liftIO (TLIO.readFile (toFilePath (matchReplayPath m)))
-        _ -> error "match id collision, this should never happen"
+matchPage :: MonadIO m => StateVar -> MatchId -> m MatchPage
+matchPage stateVar mid = do
+    m <- match stateVar mid
+    replayText <- liftIO (TIO.readFile (toFilePath (matchReplayPath m)))
+    return (MatchPage m replayText)
 
 mainPage :: MonadIO m => StateVar -> m MainPage
 mainPage stateVar = MainPage <$> readStateVar stateVar
 
-help :: EitherT ServantErr IO APIDocs
-help = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy WebAPI)))))
+helpPage :: EitherT ServantErr IO APIDocs
+helpPage = return (APIDocs (TL.pack (markdown (docs (Proxy :: Proxy JSONAPI)))))
 
 newtype APIDocs = APIDocs TL.Text
 
@@ -231,7 +277,11 @@ instance ToSample Match Match where
             replayPath)
 
 instance ToSample Tournament Tournament where
-    toSample _ = Just (Tournament (TournamentId 0) RoundRobin (pure (MatchId 0)))
+    toSample _ = do
+        rocky <- Bot "Rocky" . ExecutableBot <$> parseAbsFile "/tmp/rocky.py"
+        pepper <- Bot "Pepper" . ExecutableBot <$> parseAbsFile "/tmp/pepper.py"
+        return (Tournament (TournamentId 0) RoundRobin (V.fromList [rocky, pepper]) (pure (MatchId 0)))
+
 
 instance ToSample Bot Bot where
     toSample _ = Bot "Randy" . ExecutableBot <$> parseAbsFile "/home/randy/src/shiny_metal_bot.sh"
