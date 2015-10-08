@@ -1,6 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module AIChallenger.Bot
     ( Player (..)
@@ -11,11 +11,13 @@ module AIChallenger.Bot
 import Control.Concurrent
 import Control.Exception
 import Control.Monad.Extra
+import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Vector.Extended as V
 import qualified Network.Simple.TCP as TCP
 import qualified Network.Socket as Socket
+import Network.WebSockets
 import System.Directory
 import System.IO
 import System.Process
@@ -39,8 +41,8 @@ playerClose (Player _ _ input output shutdown) = do
     catchAll (closeOutChannel input)
     catchAll shutdown
 
-launchBots :: V.Vector Bot -> IO (Either (V.Vector Bot, Faults) (V.Vector Player))
-launchBots bots = do
+launchBots :: V.Vector Bot -> RemotePlayers -> IO (Either (V.Vector Bot, Faults) (V.Vector Player))
+launchBots bots remotePlayers = do
     let playerIds = fmap PlayerId [1 .. V.length bots]
     playersAndFaults <- mapM launch (V.zip playerIds bots)
     let players = V.mapMaybe (either (const Nothing) Just) playersAndFaults
@@ -61,6 +63,25 @@ launchBots bots = do
                 whateverChannel
                 (yesChannel ".")
                 (return ()))
+
+    launch (pid, Bot name WebSocketBot) =
+        case M.lookup name remotePlayers of
+            Nothing -> pure (Left (pid, pure (Fault ("Player " <> name <> " disconnected"))))
+            Just conn -> do
+                hopefullyPlayer <- try $ do
+                    sendDataMessage conn (Text "GameStart")
+                    pure (Player
+                        pid
+                        name
+                        (outWSChannel conn)
+                        (inWSChannel conn)
+                        (sendDataMessage conn (Text "GameOver")))
+                case hopefullyPlayer of
+                    Right p -> return (Right p)
+                    Left e ->
+                        let msg = "Failed to launch websocket bot '" <> name <> "': "
+                                <> T.pack (show (e :: SomeException))
+                        in return (Left (pid, pure (Fault msg)))
 
     launch (pid, Bot name (TCPBot port)) = do
         hopefullyPlayer <- try $ do

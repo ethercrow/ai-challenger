@@ -51,6 +51,7 @@ main = do
             (V.fromList [rocky, pepper, scarlett])
             (V.fromList [rvp, rvs, pvs])
             (pure tournament)
+            mempty
 
     save "lorem-main.html" (MainPage state)
 

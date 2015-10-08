@@ -3,11 +3,13 @@ module AIChallenger.StateVar
     , OutChan
     , readChan
     , addBot
+    , removeWebSocketBot
     , readStateVar
     , mkTournament
     , mkStateVar
     , addMatch
     , subscribeToStateUpdates
+    , addWebSocketConnection
     ) where
 
 -- FIXME: determined user of this module can probably make
@@ -17,13 +19,17 @@ import Control.Concurrent.MVar
 import qualified Control.Concurrent.Chan as Chan
 import Control.Monad.IO.Class
 import Control.DeepSeq
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Monoid
+import Network.WebSockets
 
 import AIChallenger.Types
 
-data StateVar = StateVar (MVar ServerState) (Chan.Chan ServerStateUpdate)
+data StateVar = StateVar
+    (MVar (ServerState)) -- , M.Map BotName Connection))
+    (Chan.Chan ServerStateUpdate)
 
 newtype OutChan a = OutChan (Chan.Chan a)
 
@@ -46,6 +52,24 @@ addBot bot (StateVar var chan) = do
             Chan.writeChan chan u
             return $!! (newValue, Right bot)
 
+removeWebSocketBot :: MonadIO m => BotName -> StateVar -> m ServerState
+removeWebSocketBot name (StateVar var _chan) =
+    liftIO . modifyMVar var $ \value ->
+        let oldRemotePlayers = ssRemotePlayers value
+            oldBots = ssBots value
+            newValue = value
+                { ssRemotePlayers = M.delete name oldRemotePlayers
+                , ssBots = V.filter ((/= name) . botName) oldBots
+                }
+        in newValue `deepseq` (return $! (newValue, newValue))
+
+addWebSocketConnection :: MonadIO m => BotName -> Connection -> StateVar -> m ServerState
+addWebSocketConnection name conn (StateVar var _chan) =
+    liftIO . modifyMVar var $ \value ->
+        let oldRemotePlayers = ssRemotePlayers value
+            newValue = value { ssRemotePlayers = M.insert name conn oldRemotePlayers }
+        in newValue `deepseq` (return $! (newValue, newValue))
+
 addMatch :: MonadIO m => StateVar -> Match -> m ServerState
 addMatch stateVar m = modifyStateVar stateVar (AddMatch m)
 
@@ -59,7 +83,7 @@ modifyStateVar (StateVar var chan) u =
 
 mkStateVar :: MonadIO m => m StateVar
 mkStateVar = StateVar
-    <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty mempty))
+    <$> liftIO (newMVar (ServerState (MatchId 0) (TournamentId 0) mempty mempty mempty mempty))
     <*> liftIO Chan.newChan
 
 mkTournament :: MonadIO m => StateVar -> TournamentKind -> Int -> V.Vector Bot -> m Tournament

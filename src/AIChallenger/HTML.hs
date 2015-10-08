@@ -11,7 +11,7 @@ module AIChallenger.HTML
 
 import Control.Monad
 import Data.FileEmbed
-import Data.List (sort, sortOn)
+import Data.List (sort, sortOn, intersperse)
 import Data.Monoid
 import Lucid
 import qualified Data.Text as T
@@ -26,7 +26,7 @@ data TournamentPage = TournamentPage Tournament (V.Vector Match)
 data MatchPage = MatchPage Match T.Text
 
 instance ToHtml MainPage where
-    toHtml (MainPage (ServerState _ _ _ _ tournaments)) =
+    toHtml (MainPage (ServerState _ _ _ _ tournaments _)) =
         doctypehtml_ $ do
             h1_ "Welcome!"
             div_ [style_ "float: left"] $ do
@@ -132,7 +132,8 @@ instance ToHtml MatchPage where
                         <> " via " <>
                         toHtml (showT gameOver)
                 _ ->
-                    foldMap botWidget (V.toList bots) <> "fought to a draw"
+                    mconcat (intersperse " and " (map botWidget (V.toList bots)))
+                        <> " fought to a draw"
     toHtmlRaw = toHtml
 
 newtype BotWidget = BotWidget Bot

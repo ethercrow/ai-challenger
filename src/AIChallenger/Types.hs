@@ -14,10 +14,12 @@ import qualified Data.Aeson as A
 import Data.Function (on)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty, toList)
+import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import GHC.Generics
+import Network.WebSockets
 import Path
 import Path.Internal
 import Servant
@@ -32,6 +34,7 @@ data Bot = Bot
 data BotCommunication
     = IdleBot
     | ExecutableBot !(Path Abs File)
+    | WebSocketBot
     | TCPBot !Int
     deriving (Show, Generic, Eq)
 
@@ -69,7 +72,13 @@ data ServerState = ServerState
     , ssBots :: !(V.Vector Bot)
     , ssMatches :: !(V.Vector Match)
     , ssTournaments :: !(V.Vector Tournament)
-    } deriving (Show, Generic)
+    , ssRemotePlayers :: !(M.Map BotName Connection)
+    }
+
+instance Show ServerState where
+    show (ServerState _ _ bots matches tournaments _) =
+        "<ServerState bots = " <> show bots <> ", matches = " <>
+            show matches <> ", tournaments = " <> show tournaments <> ">"
 
 instance NFData (Path a b) where
     rnf (Path x) = rnf x
@@ -90,7 +99,8 @@ instance NFData Tournament where
     rnf = genericRnf
 
 instance NFData ServerState where
-    rnf = genericRnf
+    rnf (ServerState _ _ bots matches tournaments _) =
+        rnf bots `seq` rnf matches `seq` rnf tournaments
 
 instance A.FromJSON (Path Abs File) where
     parseJSON (A.String t) =
@@ -113,7 +123,12 @@ instance A.ToJSON Bot
 
 instance A.ToJSON BotCommunication
 
-instance A.ToJSON ServerState
+instance A.ToJSON ServerState where
+    toJSON (ServerState _ _ bots matches tournaments _) = A.object
+        [ "ssBots" A..= A.toJSON bots
+        , "ssMatches" A..= A.toJSON matches
+        , "ssTournaments" A..= A.toJSON tournaments
+        ]
 
 instance A.ToJSON Match
 
@@ -206,3 +221,5 @@ data InChannel = InChannel
     , channelEOF :: IO Bool
     , closeInChannel :: IO ()
     }
+
+type RemotePlayers = M.Map BotName Connection

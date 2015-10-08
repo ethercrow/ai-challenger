@@ -60,7 +60,7 @@ pythonPlayersTest = do
         pepper = Bot "Pepper" (ExecutableBot (curDir </> $(mkRelFile "game-rps/paper.py")))
         bots = [rocky, pepper]
     Match (MatchId 0) (TournamentId 0) bots' winners gameover replayPath <-
-        launchBotsAndSimulateMatch RPS.game (MapName "default") (Turn 3) bots (TournamentId 0) (MatchId 0)
+        launchBotsAndSimulateMatch RPS.game (MapName "default") (Turn 3) bots mempty (TournamentId 0) (MatchId 0)
     True <- return $! bots == bots'
     True <- return $! winners == [pepper]
     True <- return $! TurnLimit == gameover

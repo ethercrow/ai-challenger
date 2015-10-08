@@ -18,12 +18,9 @@ import Control.Concurrent (forkIO)
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Either
-import qualified Data.Aeson as A
 import Data.Maybe
 import Data.Monoid
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
-import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Data.Text.Lazy as TL
@@ -41,12 +38,12 @@ import Servant.Docs
 import Servant.HTML.Lucid
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Markdown as MD
-import Text.Read
 
 import AIChallenger.HTML
 import AIChallenger.Match
 import AIChallenger.StateVar
 import AIChallenger.Types
+import AIChallenger.WebSocketApp
 
 turnLimit :: Turn
 turnLimit = Turn 200
@@ -71,56 +68,6 @@ webApp game stateVar waiMetrics =
     websocketsOr defaultConnectionOptions
         (wsApp stateVar)
         (httpApp game stateVar waiMetrics)
-
-wsSendJSON :: A.ToJSON a => Connection -> a -> IO ()
-wsSendJSON conn x = sendDataMessage conn (Text (A.encode x))
-
-wsApp :: StateVar -> ServerApp
-wsApp stateVar pendingConnection = do
-    (state, chan) <- subscribeToStateUpdates stateVar
-    let reqPath = requestPath (pendingRequest pendingConnection)
-    case reqPath of
-        "state" -> do
-            conn <- acceptRequest pendingConnection
-            BS.putStrLn ("Incoming websocket request " <> reqPath)
-            wsSendJSON conn state
-            forever $ do
-                update <- readChan chan
-                wsSendJSON conn update
-        "/tournaments" -> do
-            conn <- acceptRequest pendingConnection
-            mapM_ (wsSendJSON conn) (ssTournaments state)
-            forever $ do
-                update <- readChan chan
-                case update of
-                    AddTournament t -> wsSendJSON conn t
-                    _ -> return ()
-        (BS.split '/' -> ["", "tournament", (fmap TournamentId . readMaybe . BS.unpack) -> Just tid]) -> do
-            -- TODO: better lookup performance
-            case V.filter ((== tid) . tId) (ssTournaments state) of
-                [] -> do
-                    BS.putStrLn ("websocket request " <> reqPath <> " rejected, because 404")
-                    rejectRequest pendingConnection (BS.pack ("no tournament with " <> show tid))
-                [t] -> do
-                    conn <- acceptRequest pendingConnection
-                    let mids = S.fromList (V.toList (tMatchIds t))
-                        completedMatches = V.filter ((`S.member` mids) . matchId) (ssMatches state)
-                        remainingMids = mids `S.difference` (S.fromList (V.toList (V.map matchId completedMatches)))
-                    wsSendJSON conn t
-                    mapM_ (wsSendJSON conn) completedMatches
-                    let go (S.null -> True) = return ()
-                        go stillRemaining = do
-                            update <- readChan chan
-                            case update of
-                                AddMatch m | matchId m `S.member` stillRemaining -> do
-                                    wsSendJSON conn m
-                                    go (S.delete (matchId m) stillRemaining)
-                                _ -> return ()
-                    go remainingMids
-                _ -> error "tournament id collision, this should never happen"
-        _ -> do
-            BS.putStrLn ("Rejected unknown websocket request " <> reqPath)
-            rejectRequest pendingConnection ("Unknown path " <> reqPath)
 
 httpApp :: Game game => game -> StateVar -> Maybe WaiMetrics -> Wai.Application
 httpApp game stateVar waiMetrics = do
@@ -177,13 +124,15 @@ launchTraining game stateVar mapName name = do
     launchTournament stateVar (Training name) mapName (launchBotsAndSimulateMatch game mapName turnLimit)
 
 launchTournament :: StateVar -> TournamentKind -> MapName ->
-     (V.Vector Bot -> TournamentId -> MatchId -> IO Match)
+     (V.Vector Bot -> RemotePlayers -> TournamentId -> MatchId -> IO Match)
      -> EitherT ServantErr IO Tournament
 launchTournament stateVar tournamentKind _mapName play = do
     -- TODO: include mapName in tournament record,
     --       spectators would probably like to know what map is used in a tournament
-    bots <- ssBots <$> readStateVar stateVar
-    let pairs = case tournamentKind of 
+    state <- readStateVar stateVar
+    let bots = ssBots state
+        remotePlayers = ssRemotePlayers state
+        pairs = case tournamentKind of 
             RoundRobin -> [V.fromList [b1, b2] | b1 <- bots, b2 <- bots, b1 < b2]
             Training name ->
                 let myBot = V.head (V.filter ((== name) . botName) bots)
@@ -196,7 +145,7 @@ launchTournament stateVar tournamentKind _mapName play = do
         _ <- liftIO . forkIO $ do
             putStrLn (show tid <> " started")
             forM_ (V.zip mids pairs) $ \(mId, pair) -> do
-                result <- play pair tid mId
+                result <- play pair remotePlayers tid mId
                 putStrLn ("Finished " <> show mId)
                 void $ addMatch stateVar result
             putStrLn (show tid <> " finished")
@@ -258,7 +207,7 @@ instance ToSample ServerState ServerState where
         let bots = [rocky, pepper, scarlett]
             matches = mempty
             tournaments = mempty
-        return (ServerState (MatchId (V.length matches)) (TournamentId 0) bots matches tournaments)
+        return (ServerState (MatchId (V.length matches)) (TournamentId 0) bots matches tournaments mempty)
 
 instance ToSample Match Match where
     toSample _ = do

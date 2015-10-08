@@ -19,10 +19,11 @@ import Path
 import System.Timeout
 
 import AIChallenger.Bot
+import AIChallenger.Channel
 import AIChallenger.Types
 
-launchBotsAndSimulateMatch :: Game game => game -> MapName -> Turn -> V.Vector Bot -> TournamentId -> MatchId -> IO Match
-launchBotsAndSimulateMatch game mapName turnLimit bots tournamentId mid@(MatchId x) = do
+launchBotsAndSimulateMatch :: Game game => game -> MapName -> Turn -> V.Vector Bot -> RemotePlayers -> TournamentId -> MatchId -> IO Match
+launchBotsAndSimulateMatch game mapName turnLimit bots remotePlayers tournamentId mid@(MatchId x) = do
     replayPath <- parseAbsFile ("/tmp/" <> show x <> ".replay")
     let work (Right players) = do
              GameResult winnerIds gameOver replay <- simulateMatch game mapName turnLimit players
@@ -37,7 +38,7 @@ launchBotsAndSimulateMatch game mapName turnLimit bots tournamentId mid@(MatchId
              gameSaveReplay game replayPath replay
              return (Match mid tournamentId bots winnerBots (Disqualification faults) replayPath)
     bracket
-        (launchBots bots)
+        (launchBots bots remotePlayers)
         (either (const (return ())) (V.mapM_ playerClose))
         work
 
@@ -111,14 +112,3 @@ getOrders game bots = do
     if V.null ioFaults && V.null badOrders
     then return (Right goodOrders)
     else return (Left (ioFaults <> badOrders))
-
-chReadLinesUntilDot :: InChannel -> IO (Either Fault [T.Text])
-chReadLinesUntilDot ch = do
-    fmap (fmap reverse) (go [])
-    where
-    go acc = do
-        faultOrLine <- receiveLine ch
-        case faultOrLine of
-          Right "." -> return (Right acc)
-          Right l -> go (l : acc)
-          Left fault -> return (Left fault)

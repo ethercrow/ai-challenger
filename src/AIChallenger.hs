@@ -15,7 +15,6 @@ import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Metrics
 import qualified System.Remote.Monitoring as EKG
 import Path
-import System.Environment
 
 import AIChallenger.Config
 import AIChallenger.StateVar
@@ -32,7 +31,6 @@ startJudge game config = do
             | exe <- cfgBotExecutables config
             ]
     mapM_ (\bot -> addBot bot stateVar) bots
-    selfPath <- parseAbsFile =<< getExecutablePath
     let settings = Warp.defaultSettings
             & Warp.setPort (cfgPort config)
             & Warp.setHost (fromString (cfgAddress config))
