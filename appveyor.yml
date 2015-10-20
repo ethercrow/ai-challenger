@@ -1,0 +1,17 @@
+cache:
+- "c:\\sr"
+- "%LOCALAPPDATA%\\Programs\\stack"
+
+build: off
+
+before_test:
+- curl -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
+- 7z x stack.zip stack.exe
+
+clone_folder: "c:\\stack"
+environment:
+  global:
+    STACK_ROOT: "c:\\sr"
+
+test_script:
+- echo "" | stack --arch i386 --no-terminal --install-ghc test
